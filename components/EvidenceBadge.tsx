@@ -5,6 +5,7 @@ const descriptions: Record<EvidenceKind, string> = {
  Verified: 'Confirmed by a source in the mock dataset; no real verification has occurred.',
 };
 
+
 export function EvidenceBadge({ kind }: { kind: EvidenceKind }) {
  return <span className={`evidence-badge evidence-${kind.toLowerCase()}`} title={descriptions[kind]}>{kind}</span>;
 }
