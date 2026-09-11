@@ -1,4 +1,5 @@
 import { timelineEvents, sourceLabels } from '@/data/profile-details';
+import { commitmentSeed } from '@/data/mocks/commitments';
 import type { EvidenceEvent, ProfileTimelineEvent } from '@/types/profile';
 import { EvidenceBadge } from '../EvidenceBadge';
 import { Icon } from '../Icon';
@@ -9,8 +10,10 @@ export function TimelineItem({ item, records, onSelect }: { item: ProfileTimelin
 }
 export function ProfileTimeline({ records, onSelect }: { records: EvidenceEvent[]; onSelect: (record: EvidenceEvent) => void }) {
  // Omit aggregate events unless every linked record is permitted; titles must not leak hidden counts/categories.
- const visible = timelineEvents.filter(t => t.evidenceIds.every(id => records.some(r => r.id === id)));
- return <section className="card sharing-summary"><div className="section-heading"><div><h2>Your evolving timeline</h2><p>Selected activity and profile updates · As of September 9, 2026</p></div><span className="period-pill">Mock timeline</span></div>{(['Today', 'This week', 'Last month'] as const).map(group => {
+ const seedIds = new Set(commitmentSeed.evidence.map(e => e.id));
+ const updates: ProfileTimelineEvent[] = records.filter(e => e.type === 'commitment-outcome' && !seedIds.has(e.id)).map(e => ({id:e.id,title:`${e.title} — ${e.metadata?.outcome}`,group:'Recent updates',evidenceIds:[e.id]}));
+ const visible = [...updates, ...timelineEvents].filter(t => t.evidenceIds.every(id => records.some(r => r.id === id)));
+ return <section className="card sharing-summary"><div className="section-heading"><div><h2>Your evolving timeline</h2><p>New session outcomes and sample history from September 9, 2026</p></div><span className="period-pill">Mock timeline</span></div>{(['Recent updates', 'Today', 'This week', 'Last month'] as const).map(group => {
  const events = visible.filter(t => t.group === group);
  return events.length > 0 && <section key={group} className="timeline-group"><h3>{group}</h3><ol>{events.map(item => <TimelineItem key={item.id} item={item} records={records.filter(r => item.evidenceIds.includes(r.id))} onSelect={onSelect}/>)}</ol></section>;
  })}{visible.length === 0 && <p className="empty-state">No selected timeline events are shared with this audience.</p>}</section>;

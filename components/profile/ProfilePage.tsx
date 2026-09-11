@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { Sidebar, TopBar } from '../Dashboard';
 import { Icon } from '../Icon';
-import { audiences, canSeeEvidence, initialAbout, initialPermissions, profileEvidence, sectionLabels } from '@/data/profile-details';
+import { audiences, canSeeEvidence, initialAbout, initialPermissions, sectionLabels } from '@/data/profile-details';
 import type { AboutProfile, AudienceType, BehavioralPattern, EvidenceEvent, ProfileSection } from '@/types/profile';
 import { ProfileHeader } from './ProfileHeader';
 import { ProfileTabs, type ProfileTab } from './ProfileTabs';
@@ -12,7 +12,11 @@ import { ProfileTimeline } from './ProfileTimeline';
 import { AboutEditor, ProfileAbout } from './ProfileAbout';
 import { PermissionMatrix } from './PermissionMatrix';
 import { ProfileModal } from './ProfileModal';
+import { useCommitments } from '../commitments/CommitmentProvider';
+import { ReliabilityEvidencePanel } from '../evidence/ReliabilityEvidencePanel';
 export function ProfilePage() {
+ const { state } = useCommitments();
+ const profileEvidence = state.evidence;
  const [tab, setTab] = useState<ProfileTab>('Overview');
  const [about, setAbout] = useState(initialAbout);
  const [permissions, setPermissions] = useState(initialPermissions);
@@ -55,8 +59,8 @@ export function ProfilePage() {
   <footer className="page-footer"><span><span className="footer-dot"/> Your profile. Your context. Your choice.</span><span>Mock data · Changes reset on refresh</span></footer>
  </main></div>
  {editing && <ProfileModal title="Edit Profile" onClose={() => setEditing(false)}><AboutEditor initial={about} onSave={saveProfile} onCancel={() => setEditing(false)}/></ProfileModal>}
- {selectedEvidence && <EvidenceDetails event={selectedEvidence} onClose={() => setSelectedEvidence(null)}/>}
- {selectedPattern && <PatternDetails pattern={selectedPattern} allRecords={profileEvidence} visibleRecords={records} onClose={() => setSelectedPattern(null)}/>}
+ {selectedEvidence && <EvidenceDetails preview={audience !== 'me'} event={selectedEvidence} onClose={() => setSelectedEvidence(null)}/>}
+ {selectedPattern && (selectedPattern.id === 'reliability' ? <ReliabilityEvidencePanel visibleRecords={records} preview={audience !== 'me'} onClose={() => setSelectedPattern(null)}/> : <PatternDetails pattern={selectedPattern} allRecords={profileEvidence} visibleRecords={records} onClose={() => setSelectedPattern(null)}/>)}
  {sharing && <ProfileModal title="Share Profile — local preview" onClose={() => setSharing(false)}><div className="profile-detail"><p>Choose an audience to review the information you would share. This prototype does not publish your profile or create a live sharing link.</p><label className="share-audience">Audience<select value={shareAudience} onChange={e => setShareAudience(e.target.value as AudienceType)}>{audiences.map(a => <option value={a} key={a}>{a}</option>)}</select></label><h3>Included categories</h3><ul className="about-list">{(Object.keys(sectionLabels) as ProfileSection[]).filter(section => permissions[section][shareAudience]).map(section => <li key={section}>{sectionLabels[section]}</li>)}</ul><p>{profileEvidence.filter(e => canSeeEvidence(e, shareAudience, permissions)).length} selected evidence records are visible.</p><div className="profile-actions"><button className="profile-button" onClick={() => { setSharing(false); setTab('Permissions'); }}>Edit permissions</button><button className="profile-button primary" onClick={() => { setSharing(false); setShowPreview(true); viewAs(shareAudience); setTab('Overview'); }}>Preview shared profile</button></div></div></ProfileModal>}
  </div>;
 }

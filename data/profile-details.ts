@@ -27,10 +27,10 @@ export const initialPermissions = Object.fromEntries(
 ) as PermissionSettings;
 export const sourceLabels: Record<EvidenceSourceType, EvidenceKind> = { 'self-reported': 'Self-reported', observed: 'Observed', verified: 'Verified' };
 
-// 103 historical records + 24 personal check-ins = 127 profile evidence items.
+// Historical domain outcomes plus activity and personal check-ins; counts are derived.
 // Source assignments are mock provenance, never claims of external verification.
 const extras: EvidenceEvent[] = Array.from({ length: 24 }, (_, i) => ({
- id: `profile-checkin-${i + 1}`, title: i === 0 ? 'Feeling calm and focused' : i === 1 ? 'Financial check-in: stable' : `Personal check-in ${i + 1}`,
+ type: 'activity', id: `profile-checkin-${i + 1}`, title: i === 0 ? 'Feeling calm and focused' : i === 1 ? 'Financial check-in: stable' : `Personal check-in ${i + 1}`,
  description: i === 0 ? 'Updated current state: calm and focused, with low stress and good energy.' : i === 1 ? 'Personal reflection on financial routines. No accounts or payment systems connected.' : 'A user-provided reflection on everyday life.',
  category: i === 1 ? 'Financial' : 'Current State', timestamp: new Date(Date.UTC(2026, 8, 9 - i, 18, 25)).toISOString(),
  source: 'Personal check-in (mock)', kind: 'Self-reported', sourceType: 'self-reported',
@@ -38,37 +38,17 @@ const extras: EvidenceEvent[] = Array.from({ length: 24 }, (_, i) => ({
  relatedPattern: i === 1 ? 'financial' : null, pattern: i === 1 ? 'financial' : undefined,
  icon: 'profile', perspectives: [], visibility: i === 1 ? [] : ['friend', 'family'],
 }));
-const historical = homeEvidence.map(e => {
- const updated = { ...e, visibility: [...new Set([...e.visibility, 'family' as const])] };
- if (e.id === 'commitment-1') return { ...updated, title: 'Dashboard PR completed', source: 'Commitment confirmation (mock)' };
- if (e.id === 'commitment-2') return { ...updated, timestamp: '2026-09-09T16:00:00.000Z' };
- if (e.id === 'commitment-3') return { ...updated, title: 'Helped neighbor move furniture', relatedPattern: 'community' as const, source: 'Self + confirmation (mock)', timestamp: '2026-09-08T14:00:00.000Z' };
- if (e.id === 'commitment-4') return { ...updated, timestamp: '2026-09-07T17:00:00.000Z' };
- if (e.id === 'commitment-51') return { ...updated, timestamp: '2026-08-19T12:00:00.000Z' };
- return updated;
-});
-// The eight learning journals and 24 personal check-ins are self-reported.
-// Of the remaining 95 records, 34 are mock-confirmed and 61 are observed.
-let verifiedCount = 0;
-const ordered = [...historical].sort((a, b) => {
- const priority = (e: EvidenceEvent) => ['commitment-1', 'commitment-3'].includes(e.id) ? 0 : e.pattern === 'community' ? 1 : 2;
- return priority(a) - priority(b);
-});
-export const profileEvidence: EvidenceEvent[] = [...ordered.map(e => {
- const sourceType: EvidenceSourceType = e.pattern === 'growth' ? 'self-reported' : verifiedCount++ < 34 ? 'verified' : 'observed';
- return { ...e, sourceType, kind: sourceLabels[sourceType], verificationStatus: sourceType === 'verified' ? 'mock-verified' as const : 'unverified' as const, verification: sourceType === 'verified' ? 'Confirmed in mock records' as const : 'Not independently verified' as const };
-}), ...extras].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+// Commitment records retain the observed provenance produced by the domain service.
+export const profileEvidence: EvidenceEvent[] = [...homeEvidence, ...extras].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 export function evidenceCounts(records: EvidenceEvent[]) {
  return { 'self-reported': records.filter(e => e.sourceType === 'self-reported').length, observed: records.filter(e => e.sourceType === 'observed').length, verified: records.filter(e => e.sourceType === 'verified').length, total: records.length };
 }
 export const profilePatterns: BehavioralPattern[] = [...homePatterns.map(p => ({
  ...p,
  value: p.id === 'relationships' ? 'Consistent' : p.value,
- detail: p.id === 'reliability' ? '53 commitments observed · 50 completed' : p.detail,
- observations: p.id === 'reliability' ? 'Historical follow-through' : p.observations,
  confidence: p.id === 'community' ? 'High' as const : p.confidence,
- evidenceIds: p.id === 'community' ? [...p.evidenceIds, 'commitment-3'] : p.evidenceIds,
- kinds: [...new Set(profileEvidence.filter(e => p.evidenceIds.includes(e.id) || (p.id === 'community' && e.id === 'commitment-3')).map(e => e.kind))],
+ evidenceIds: p.id === 'community' ? [...p.evidenceIds, 'outcome:commitment-3'] : p.evidenceIds,
+ kinds: [...new Set(profileEvidence.filter(e => p.evidenceIds.includes(e.id) || (p.id === 'community' && e.id === 'outcome:commitment-3')).map(e => e.kind))],
 })), {
  id: 'financial', title: 'Financial Responsibility', value: 'Stable', detail: 'Mock data · Personal reflection', observations: 'Not a financial assessment', period: 'Latest check-in', icon: 'wallet', color: 'amber', evidenceIds: ['profile-checkin-2'], kinds: ['Self-reported'], perspectives: [],
 }];
@@ -80,14 +60,14 @@ export const profileWellbeing: (WellbeingMetric & { sourceType: EvidenceSourceTy
 const augustCompleted = profileEvidence.filter(e => e.pattern === 'reliability' && e.outcome === 'completed' && e.timestamp.startsWith('2026-08')).slice(0, 8);
 const augustCommunity = profileEvidence.filter(e => e.pattern === 'community' && e.timestamp.startsWith('2026-08')).slice(0, 3);
 export const timelineEvents: ProfileTimelineEvent[] = [
- { id: 't1', group: 'Today', title: 'Completed dashboard PR', evidenceIds: ['commitment-1'] },
+ { id: 't1', group: 'Today', title: 'Completed dashboard PR', evidenceIds: ['outcome:commitment-1'] },
  { id: 't2', group: 'Today', title: 'Updated current state', evidenceIds: ['profile-checkin-1'] },
- { id: 't3', group: 'Today', title: 'Completed fitness class', evidenceIds: ['commitment-2'] },
- { id: 't4', group: 'This week', title: 'Helped a neighbor', evidenceIds: ['commitment-3'] },
+ { id: 't3', group: 'Today', title: 'Completed fitness class', evidenceIds: ['outcome:commitment-2'] },
+ { id: 't4', group: 'This week', title: 'Helped a neighbor', evidenceIds: ['outcome:commitment-3'] },
  { id: 't5', group: 'This week', title: 'Added a new learning activity', evidenceIds: ['learning-1'] },
- { id: 't6', group: 'This week', title: 'Completed family commitment', evidenceIds: ['commitment-4'] },
+ { id: 't6', group: 'This week', title: 'Completed family commitment', evidenceIds: ['outcome:commitment-4'] },
  { id: 't7', group: 'Last month', title: `Completed ${augustCompleted.length} commitments`, evidenceIds: augustCompleted.map(e => e.id) },
- { id: 't8', group: 'Last month', title: '1 commitment completed late', evidenceIds: ['commitment-51'] },
+ { id: 't8', group: 'Last month', title: '1 commitment completed late', evidenceIds: ['outcome:commitment-51'] },
  { id: 't9', group: 'Last month', title: `Participated in ${augustCommunity.length} community activities`, evidenceIds: augustCommunity.map(e => e.id) },
 ];
 export const patternSections: Record<string, ProfileSection> = { reliability: 'reliability', relationships: 'family', community: 'community', growth: 'growth', financial: 'financial' };

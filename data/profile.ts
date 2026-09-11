@@ -1,4 +1,5 @@
-import type { User, CurrentState, WellbeingMetric, BehavioralPattern, Commitment, EvidenceEvent, ProfilePerspective, ProfileReference } from '@/types/profile';
+import { commitmentSeed } from './mocks/commitments';
+import type { User, CurrentState, WellbeingMetric, BehavioralPattern, EvidenceEvent, ProfilePerspective, ProfileReference } from '@/types/profile';
 export const user: User = { name: 'Adithya Rayaprolu', firstName: 'Adithya', initials: 'AR' };
 export const perspectives: ProfilePerspective[] = ['Me', 'Family', 'Friend', 'Neighbor', 'Employer', 'Landlord', 'Custom'];
 export const currentState: CurrentState = { label: 'Calm & Focused', updated: '5 minutes ago', metrics: [{ label: 'Stress', value: 'Low', icon: 'leaf' }, { label: 'Energy', value: 'Good', icon: 'bolt' }, { label: 'Focus', value: 'High', icon: 'focus' }, { label: 'Social', value: 'Available', icon: 'people' }] };
@@ -13,56 +14,31 @@ export const supportedPerspectives: ProfilePerspective[] = ['Me', 'Employer', 'L
 // Raw evidence is the source of truth. All records and verification are simulated.
 const verification = (kind: EvidenceEvent['kind']): EvidenceEvent['verification'] =>
  kind === 'Verified' ? 'Confirmed in mock records' : 'Not independently verified';
-const record = (event: Omit<EvidenceEvent, 'verification' | 'description' | 'sourceType' | 'verificationStatus' | 'relatedPattern' | 'visibility'>): EvidenceEvent => ({
- ...event, verification: verification(event.kind), description: `${event.title}. Illustrative activity record.`,
+const record = (event: Omit<EvidenceEvent, 'verification' | 'description' | 'sourceType' | 'verificationStatus' | 'relatedPattern' | 'visibility' | 'type' | 'metadata'>): EvidenceEvent => ({
+ ...event, type: 'activity', verification: verification(event.kind), description: `${event.title}. Illustrative activity record.`,
  sourceType: event.kind.toLowerCase() as EvidenceEvent['sourceType'],
  verificationStatus: event.kind === 'Verified' ? 'mock-verified' : 'unverified',
  relatedPattern: event.pattern ?? null,
  visibility: event.perspectives.map(p => p.toLowerCase() as EvidenceEvent['visibility'][number]),
 });
 export const evidence: EvidenceEvent[] = [
- ...Array.from({ length: 53 }, (_, i) => {
-  const category = ['Work', 'Well-being', 'Community', 'Family', 'Agreement'][i % 5];
-  const audience: ProfilePerspective[] = category === 'Work' ? ['Employer'] : category === 'Community' ? ['Neighbor'] : category === 'Agreement' ? ['Landlord'] : [];
-  return record({
-   id: `commitment-${i + 1}`, pattern: 'reliability',
-   title: i === 0 ? 'Completed dashboard PR' : i === 1 ? 'Attended scheduled fitness class' : i === 2 ? 'Helped a neighbor' : i === 3 ? 'Completed family commitment' : i === 4 ? 'Completed agreed payment' : `${category} commitment ${i + 1}`,
-   timestamp: new Date(Date.UTC(2026, 8, 9 - i * 3, 15)).toISOString(), category,
-   source: category === 'Work' ? 'Project completion log (mock)' : category === 'Agreement' ? 'Payment receipt (mock)' : category === 'Community' ? 'Neighbor confirmation (mock)' : 'Activity log (mock)',
-   kind: i % 3 === 0 ? 'Observed' : 'Verified', icon: 'check', perspectives: audience,
-   outcome: i < 50 ? 'completed' : i < 52 ? 'late' : 'missed',
-  });
- }),
+ ...commitmentSeed.evidence,
  ...Array.from({ length: 24 }, (_, i) => record({ id: `interaction-${i + 1}`, pattern: 'relationships', title: `Supportive interaction ${i + 1}`, timestamp: new Date(Date.UTC(2026, 8, 8 - i * 6, 12)).toISOString(), category: 'Relationships', source: 'Connection activity log (mock)', kind: 'Observed', icon: 'people', perspectives: [] })),
  ...Array.from({ length: 18 }, (_, i) => record({ id: `community-${i + 1}`, pattern: 'community', title: i === 0 ? 'Contributed to neighborhood cleanup' : `Community contribution ${i + 1}`, timestamp: new Date(Date.UTC(2026, 8, 7 - i * 9, 12)).toISOString(), category: 'Community', source: 'Organizer confirmation (mock)', kind: 'Verified', icon: 'community', perspectives: ['Neighbor'] })),
  ...Array.from({ length: 8 }, (_, i) => record({ id: `learning-${i + 1}`, pattern: 'growth', title: i === 0 ? 'Completed learning activity' : `Completed learning activity ${i + 1}`, timestamp: new Date(Date.UTC(2026, 8 - i, 8, 12)).toISOString(), category: 'Learning', source: 'Personal learning journal (mock)', kind: 'Self-reported', icon: 'book', perspectives: ['Employer'] })),
 ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
-export function reliabilitySummary(records: EvidenceEvent[]) {
- const commitments = records.filter(e => e.pattern === 'reliability');
- const completed = commitments.filter(e => e.outcome === 'completed').length;
- return { observed: commitments.length, completed, late: commitments.filter(e => e.outcome === 'late').length, missed: commitments.filter(e => e.outcome === 'missed').length, percentage: commitments.length ? Math.round(completed / commitments.length * 100) : 0 };
-}
-const history = reliabilitySummary(evidence);
 const derive = (id: string) => {
  const records = evidence.filter(e => e.pattern === id);
  return { evidenceIds: records.map(e => e.id), kinds: [...new Set(records.map(e => e.kind))], count: records.length };
 };
 export const patterns: BehavioralPattern[] = [
- { id: 'reliability', title: 'Reliability', value: `${history.percentage}%`, detail: 'commitments fulfilled', observations: `${history.observed} observed commitments`, period: 'Last 6 months', icon: 'shield', color: 'green', confidence: 'High', ...derive('reliability'), perspectives: ['Employer', 'Landlord', 'Neighbor'] },
  { id: 'relationships', title: 'Relationships', value: 'Consistent & supportive', detail: 'Repeated connection and support', observations: `${derive('relationships').count} observed interactions`, period: 'Last 6 months', icon: 'people', color: 'purple', confidence: 'Medium', ...derive('relationships'), perspectives: [] },
  { id: 'community', title: 'Community', value: 'Active', detail: 'Participation in your community', observations: `${derive('community').count} contributions`, period: 'Last 6 months', icon: 'community', color: 'blue', ...derive('community'), perspectives: ['Neighbor'] },
  { id: 'growth', title: 'Personal Growth', value: 'Consistent', detail: `${derive('growth').count} learning activities this year`, observations: 'Learning across 8 months', period: 'This year', icon: 'growth', color: 'green', ...derive('growth'), perspectives: ['Employer'] },
 ];
 // Qualitative labels/confidence above are mock interpretations of linked activity,
 // not validated scoring models. Reliability counts are calculated from raw records.
-export const initialCommitments: Commitment[] = [
- { id: '1', title: 'Complete dashboard PR', category: 'Work', completed: true, perspectives: ['Employer'] },
- { id: '2', title: 'Orangetheory class', category: 'Well-being', completed: true, perspectives: [] },
- { id: '3', title: 'Plan family event', category: 'Family', completed: false, perspectives: [] },
- { id: '4', title: 'Apply to startups', category: 'Personal', completed: false, perspectives: [] },
- { id: '5', title: 'Read one book chapter', category: 'Growth', completed: true, perspectives: [] },
-];
 export const references: ProfileReference[] = [{ id: 'ref-1', text: 'Completed the previous rental agreement as recorded.', source: 'Previous landlord reference (mock)', kind: 'Verified', perspectives: ['Landlord'] }];
 export const sharedInterests = ['Neighborhood walks', 'Community volunteering'];
 export function isShared(item: { perspectives: ProfilePerspective[] }, perspective: ProfilePerspective) {

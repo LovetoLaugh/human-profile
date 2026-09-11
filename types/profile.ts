@@ -8,30 +8,13 @@ export type AudienceType = 'public' | 'friend' | 'neighbor' | 'employer' | 'land
 export type ProfileSection = 'about' | 'current-state' | 'wellbeing' | 'reliability' | 'work' | 'community' | 'family' | 'financial' | 'evidence' | 'interests' | 'growth' | 'references';
 export type PermissionSettings = Record<ProfileSection, Record<AudienceType, boolean>>;
 export type PatternId = 'reliability' | 'relationships' | 'community' | 'growth' | 'financial';
-export interface EvidenceEvent {
- description: string;
- sourceType: EvidenceSourceType;
- verificationStatus: 'mock-verified' | 'unverified';
- relatedPattern: PatternId | null;
- visibility: AudienceType[];
- id: string;
- title: string;
- timestamp: string;
- category: string;
- source: string;
- kind: EvidenceKind;
- verification: 'Confirmed in mock records' | 'Not independently verified';
- icon: string;
- perspectives: ProfilePerspective[];
- pattern?: PatternId;
- outcome?: 'completed' | 'late' | 'missed';
-}
+export type { EvidenceEvent } from '../domain/evidence/types';
 export interface BehavioralPattern {
  id: string; title: string; value: string; detail: string; observations: string;
- period: string; icon: string; color: string; confidence?: 'High' | 'Medium';
+ period: string; icon: string; color: string; confidence?: 'High' | 'Medium' | 'Low';
  evidenceIds: string[]; kinds: EvidenceKind[]; perspectives: ProfilePerspective[];
 }
-export interface Commitment { id: string; title: string; category: string; completed: boolean; perspectives: ProfilePerspective[]; }
+export type { Commitment } from '../domain/commitments/types';
 export interface ProfileReference { id: string; text: string; source: string; kind: EvidenceKind; perspectives: ProfilePerspective[]; }
 
 export interface AboutProfile {
@@ -46,6 +29,6 @@ export interface AboutProfile {
 export interface ProfileTimelineEvent {
  id: string;
  title: string;
- group: 'Today' | 'This week' | 'Last month';
+ group: 'Recent updates' | 'Today' | 'This week' | 'Last month';
  evidenceIds: string[];
 }

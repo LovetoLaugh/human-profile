@@ -1,6 +1,6 @@
 import type { BehavioralPattern, EvidenceEvent, ProfileSection } from '@/types/profile';
 import { profilePatterns, profileWellbeing, patternSections, sourceLabels, profileContext } from '@/data/profile-details';
-import { reliabilitySummary } from '@/data/profile';
+import { useCommitments } from '../commitments/CommitmentProvider';
 import { CurrentStateCard, TrendMiniChart, BehavioralPatternCard } from '../Dashboard';
 import { EvidenceBadge } from '../EvidenceBadge';
 import { Icon } from '../Icon';
@@ -13,7 +13,8 @@ export function PatternCard({ pattern, onEvidence }: { pattern: BehavioralPatter
  return <div className={pattern.id === 'financial' ? 'financial-pattern' : undefined}><BehavioralPatternCard pattern={pattern} onEvidence={onEvidence}/></div>;
 }
 export function ProfileOverview({ canSee, records, onPattern, onEvidence, onViewAll }: { canSee: (section: ProfileSection) => boolean; records: EvidenceEvent[]; onPattern: (pattern: BehavioralPattern) => void; onEvidence: (event: EvidenceEvent) => void; onViewAll: () => void }) {
- const visiblePatterns = profilePatterns.filter(p => canSee(patternSections[p.id]));
+ const { reliability } = useCommitments();
+ const visiblePatterns = [reliability.pattern, ...profilePatterns].filter(p => canSee(patternSections[p.id]));
  return <div className="dashboard-grid"><div className="main-column">
   {canSee('current-state') && <CurrentStateCard/>}
   {canSee('wellbeing') && <section><div className="section-heading"><div><h2>Well-being</h2><p>Lightweight context from your last 7 days · Mock trends</p></div></div><div className="wellbeing-grid profile-wellbeing">{profileWellbeing.map(metric => <WellbeingCard key={metric.label} metric={metric}/>)}</div></section>}
@@ -28,9 +29,7 @@ export function ProfileOverview({ canSee, records, onPattern, onEvidence, onView
 export function PatternDetails({ pattern, allRecords, visibleRecords, onClose }: { pattern: BehavioralPattern; allRecords: EvidenceEvent[]; visibleRecords: EvidenceEvent[]; onClose: () => void }) {
  const linked = allRecords.filter(e => pattern.evidenceIds.includes(e.id));
  const allowed = linked.filter(e => visibleRecords.some(v => v.id === e.id));
- const summary = reliabilitySummary(linked);
  return <ProfileModal title={`${pattern.title} — ${pattern.period}`} onClose={onClose}>
-  {pattern.id === 'reliability' && <div className="reliability-breakdown"><p><strong>{summary.observed}</strong> commitments observed</p><p><strong>{summary.completed}</strong> completed on time</p><p><strong>{summary.late}</strong> completed late</p><p><strong>{summary.missed}</strong> missed</p><h3>Reliability: {summary.percentage}%</h3><p>{summary.completed} ÷ {summary.observed}, rounded to the nearest percent. Late completions are counted separately.</p></div>}
   <p className="metric-explanation">{pattern.id === 'reliability' ? 'This metric describes historical follow-through. It is not a judgment of character.' : pattern.id === 'financial' ? 'Stable is a user-provided reflection, not a derived financial assessment.' : 'This mock pattern is an interpretation of the linked activity, not an established truth. Confidence is illustrative.'}</p>
   <p className="metric-explanation">{allowed.length} of {linked.length} linked records visible. Sharing a pattern does not share its underlying evidence automatically. All verification is simulated.</p>
   <ul className="linked-evidence">{allowed.map(e => <li key={e.id}><strong>{e.title}</strong><EvidenceBadge kind={sourceLabels[e.sourceType]}/><p>{e.category} · <time dateTime={e.timestamp}>{e.timestamp.slice(0, 10)}</time>{e.outcome && ` · ${e.outcome}`}</p><p>{e.source} · {e.verification}</p></li>)}</ul>

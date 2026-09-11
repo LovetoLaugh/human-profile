@@ -1,29 +1,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-const ts = require('typescript');
-
-// Compile data-only TypeScript in memory; no extra test runtime or generated files.
-function loadData(name, dependencies = {}) {
- const source = fs.readFileSync(path.join(__dirname, '../data', `${name}.ts`), 'utf8');
- const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
- const exports = {};
- vm.runInNewContext(code, { exports, require: id => {
-  assert.ok(id in dependencies, `Unexpected dependency: ${id}`);
-  return dependencies[id];
- } });
- return exports;
-}
-const home = loadData('profile');
-const data = loadData('profile-details', { './profile': home });
+const { loadTypeScript, plain } = require('./helpers/load-typescript.cjs');
+const data = loadTypeScript('data/profile-details.ts');
+const { commitmentSeed } = loadTypeScript('data/mocks/commitments.ts');
+const { reliabilityProfile } = loadTypeScript('domain/patterns/reliability-profile.ts');
 const { profileEvidence, profilePatterns, initialPermissions, canSeeEvidence, timelineEvents } = data;
-const clone = value => JSON.parse(JSON.stringify(value));
+const clone = plain;
 
-test('127 unique evidence items match the displayed provenance totals', () => {
- assert.deepEqual(clone(data.evidenceCounts(profileEvidence)), { 'self-reported': 32, observed: 61, verified: 34, total: 127 });
- assert.equal(new Set(profileEvidence.map(e => e.id)).size, 127);
+test('evidence totals reflect observed outcomes, not fabricated verification', () => {
+ assert.deepEqual(clone(data.evidenceCounts(profileEvidence)), { 'self-reported': 32, observed: 80, verified: 18, total: 130 });
+ assert.equal(new Set(profileEvidence.map(e => e.id)).size, 130);
  for (const event of profileEvidence) {
   assert.ok(event.description && event.category && event.source);
   assert.ok(Number.isFinite(Date.parse(event.timestamp)));
@@ -31,8 +17,10 @@ test('127 unique evidence items match the displayed provenance totals', () => {
  }
 });
 test('reliability and all pattern cards trace to underlying evidence', () => {
- assert.deepEqual(clone(home.reliabilitySummary(profileEvidence)), { observed: 53, completed: 50, late: 2, missed: 1, percentage: 94 });
- for (const pattern of profilePatterns) {
+ const view = reliabilityProfile({ ...commitmentSeed, evidence: profileEvidence });
+ assert.equal(view.result.followThroughRate, 94.34);
+ assert.equal(view.evidence.length, 53);
+ for (const pattern of [view.pattern, ...profilePatterns]) {
   assert.ok(pattern.evidenceIds.length);
   for (const id of pattern.evidenceIds) assert.ok(profileEvidence.some(e => e.id === id));
  }
@@ -41,7 +29,7 @@ test('reliability and all pattern cards trace to underlying evidence', () => {
  assert.equal(profileEvidence.filter(e => e.pattern === 'growth').length, 8);
 });
 test('default audiences exclude private details and include intended evidence', () => {
- assert.equal(profileEvidence.filter(e => canSeeEvidence(e, 'me', initialPermissions)).length, 127);
+ assert.equal(profileEvidence.filter(e => canSeeEvidence(e, 'me', initialPermissions)).length, 130);
  assert.equal(profileEvidence.filter(e => canSeeEvidence(e, 'public', initialPermissions)).length, 0);
  for (const audience of ['employer', 'landlord', 'neighbor']) {
   const records = profileEvidence.filter(e => canSeeEvidence(e, audience, initialPermissions));
@@ -54,7 +42,7 @@ test('default audiences exclude private details and include intended evidence', 
 });
 test('category switches and selected evidence are independent', () => {
  const permissions = clone(initialPermissions);
- const work = profileEvidence.find(e => e.id === 'commitment-1');
+ const work = profileEvidence.find(e => e.id === 'outcome:commitment-1');
  assert.equal(canSeeEvidence(work, 'employer', permissions), true);
  permissions.work.employer = false;
  assert.equal(canSeeEvidence(work, 'employer', permissions), false);
