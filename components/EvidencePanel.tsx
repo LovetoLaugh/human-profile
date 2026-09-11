@@ -1,4 +1,5 @@
 'use client';
+import { patternWithEvidence } from '@/domain/patterns/evidence-profile';
 import { useEffect, useRef } from 'react';
 import { isShared } from '@/data/profile';
 import type { BehavioralPattern, ProfilePerspective } from '@/types/profile';
@@ -7,7 +8,8 @@ import { useCommitments } from './commitments/CommitmentProvider';
 export function EvidencePanel({ pattern, perspective, onClose }: { pattern: BehavioralPattern; perspective: ProfilePerspective; onClose: () => void }) {
  const dialog = useRef<HTMLDialogElement>(null);
  const { state } = useCommitments();
- const records = state.evidence.filter(e => pattern.evidenceIds.includes(e.id));
+ const current = patternWithEvidence(pattern, state.evidence);
+ const records = state.evidence.filter(e => current.evidenceIds.includes(e.id));
  const sharedRecords = records.filter(e => isShared(e, perspective));
  useEffect(() => {
   const element = dialog.current;

@@ -35,7 +35,7 @@ The permission layer currently filters local previews; it is not server-enforced
 | Commitments `/commitments` | Creation, deadlines, audience selection, completion/missed/cancelled actions, status filters, reliability breakdown | Session memory; terminal outcomes cannot yet be corrected |
 | Shared interface | Reusable cards, responsive layouts, keyboard-operable tabs and native dialogs | Other sidebar destinations remain disabled |
 
-Commitment outcomes update Home and My Profile through shared session state. Client-side navigation preserves these changes; refreshing restores deterministic sample data. No external verification is connected: existing **Verified** labels represent mock confirmations only.
+Commitment outcomes update Home and My Profile through shared session state. Client-side navigation preserves these changes; refreshing restores deterministic sample data. No external verification is connected: **Verified** labels and verification actions represent mock confirmations only.
 
 ### Mocked or unavailable today
 
@@ -64,7 +64,7 @@ eligibleCommitments = completedOnTime + completedLate + missed
 followThroughRate = completedOnTime / eligibleCommitments * 100
 ```
 
-Active and cancelled commitments are excluded. The seeded history contains 50 on-time, 2 late, and 1 missed outcome: **50 / 53 × 100 = 94.34%**, displayed as **94%**. The profile uses a rolling six-calendar-month window, so fixed historical fixtures eventually age out.
+Active and cancelled commitments are excluded. The profile also excludes outcomes with missing, disputed, or revoked supporting evidence; resolving a dispute can restore eligibility. The seeded history contains 50 on-time, 2 late, and 1 missed outcome: **50 / 53 × 100 = 94.34%**, displayed as **94%**. The profile uses a rolling six-calendar-month window, so fixed historical fixtures eventually age out.
 
 Each transition records an **Observed** evidence event—not **Verified** evidence—with its commitment ID, expected date, completion date, outcome, and visibility. The evidence panel exposes the calculation and supporting records without hiding late or missed outcomes.
 
@@ -76,13 +76,38 @@ Each transition records an **Observed** evidence event—not **Verified** eviden
 
 Completing a commitment inside Human Profile creates **Observed**, not **Verified**, evidence. It records the application transition without independently confirming that the underlying work happened. Existing verified sample records are mock data.
 
+## Evidence v2 — Implemented Locally
+
+Every record has a source classification (`sourceType`), original provenance (`user`, `human-profile`, or `external-source`), source details, creation time, occurrence time (the existing `timestamp`), visibility, and audit history. `type` remains the activity/commitment-outcome discriminator. Commitment records link their entity and outcome metadata; optional confidence is available without invented per-record scores.
+
+Verification status is separate from type: **unverified, pending, verified, disputed, or revoked**. Recorded commitment outcomes begin as **Observed + unverified**. A verification request does not turn an observation into a confirmation.
+
+| Action | Implemented behavior |
+| --- | --- |
+| Request verification | Self-reported/observed unverified records become pending; duplicate requests are rejected |
+| Verify (demo) | Captures an external confirming source and source ID; sets type and status to verified; duplicate verification is rejected |
+| Dispute | Requires a reason; excludes evidence from patterns while unresolved |
+| Correct text | Requires a reason and changed title/description; preserves before/after values and invalidates prior verification |
+| Resolve dispute | Requires a reason; restores the preceding status, or unverified if corrected; preserves every audit entry |
+| Revoke | Requires a reason; retains the record but permanently excludes it within this session; no restore action |
+
+Audit entries append IDs, timestamps, actors/sources, notes, and before/after snapshots of mutable fields. Backdated entries and duplicate IDs are rejected; equal timestamps preserve append order. Immutable origin, occurrence, entity metadata, and visibility remain on the record. This is inspectable in-memory history, not a durable or tamper-proof audit system.
+
+Open **My Profile → Evidence → a record** to inspect provenance, dates, visibility, pattern contribution, and audit history. Owner-only demo actions exercise all transitions, including text corrections. Audience previews retain existing filtering and hide owner audit notes and action controls. Revoked/disputed records remain inspectable in the owner view. Summary counts track current types and statuses; qualitative mock patterns update their eligible supporting records.
+
+Six additional deterministic private demo records show all requested states. The seed has **136 records: 35 self-reported, 82 observed, 19 verified**, including one pending, one disputed, and one revoked record. These examples do not change the **50/53 reliability fixture**.
+
+**Mock verification is not real external verification.** No external service is contacted. Changes survive client navigation but reset on refresh. Corrections currently cover evidence title/description; commitment outcome/date revisions, undoing revocation, and durable dispute workflows remain future work. Original provenance records the origin even when a later correction changes the current classification.
+
+Confidence remains count-based: 0–4 Low, 5–19 Medium, 20+ High. The separate confidence policy can later consider source quality, verification, and recency; none is weighted today.
+
 ## Architecture
 
 | Location | Responsibility |
 | --- | --- |
 | `app/`, `components/` | Routes, presentation, forms, and reusable UI |
 | `domain/commitments/` | Validation, immutable state transitions, atomic outcome/evidence updates |
-| `domain/evidence/` | Evidence models and outcome generation |
+| `domain/evidence/` | Evidence v2 models, immutable services, audit snapshots, and outcome generation |
 | `domain/patterns/` | Reliability calculation, observation window, shared profile read model |
 | `components/commitments/CommitmentProvider.tsx` | Root-layout React context/reducer for shared session state |
 | `data/`, `data/mocks/` | Mock profile records and deterministic commitment fixtures |
@@ -103,7 +128,7 @@ See [pipeline design and assumptions](docs/commitment-pipeline.md). The earlier 
 
 ## Testing
 
-**28 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation.
+**52 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
 
 Run `npm test`. Tests use Node’s built-in runner and the existing TypeScript compiler, without an additional test framework.
 
@@ -156,7 +181,7 @@ Wearables / External Systems
 ## Roadmap — Future Work
 
 - Non-relational persistent backend and authentication.
-- Evidence v2: richer evidence provenance, verification sources and verification status, correction/reversal, and disputes.
+- Commitment outcome/date revisions, reversal workflows, and durable evidence audit/dispute storage. Evidence provenance, verification status, text corrections, disputes, and audit history already work locally.
 - External verification and wearable integrations.
 - Kafka-based event ingestion when justified.
 - Family-level aggregation and a richer permission engine.

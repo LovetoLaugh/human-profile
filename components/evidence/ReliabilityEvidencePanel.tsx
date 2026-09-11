@@ -20,7 +20,7 @@ export function ReliabilityEvidencePanel({ visibleRecords, onClose, preview = fa
     <section className="profile-detail calculation-explanation"><h3>How this is calculated</h3>
       <p>Completed on time ÷ (completed on time + completed late + missed) × 100.</p>
       <p>{result.eligibleCommitments ? `${result.completed} ÷ ${result.eligibleCommitments} × 100 = ${result.followThroughRate.toFixed(2)}%, shown rounded to the nearest whole percent.` : 'No eligible observations yet. No rate is shown until an outcome is recorded.'}</p>
-      <p>{result.cancelled} cancelled and {result.active} active commitments are excluded. With no due date, completion counts as on time.</p>
+      <p>{result.cancelled} cancelled and {result.active} active commitments are excluded. Disputed, revoked, or missing supporting evidence is also excluded. With no due date, completion counts as on time.</p>
       <p>Confidence: <span className="capitalize">{result.confidence}</span>. 0–4 observations: Low; 5–19: Medium; 20+: High. This is an initial product rule based on sample size, not a scientific assessment.</p>
       <p>The window covers outcomes recorded in the last six calendar months through {formatAsOf(reliability.asOf)}. Late and missed outcomes remain in the denominator.</p>
       <p>This describes historical follow-through based on recorded commitments. It is not a judgment of character.</p>

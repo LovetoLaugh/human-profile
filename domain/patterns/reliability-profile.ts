@@ -1,3 +1,4 @@
+import { contributesToPatterns } from '../evidence/services';
 import type { BehavioralPattern } from '../../types/profile';
 import type { CommitmentState } from '../commitments/pipeline';
 import { calculateReliability, commitmentsInWindow } from './reliability';
@@ -5,11 +6,14 @@ import { calculateReliability, commitmentsInWindow } from './reliability';
 /** One read model supplies cards, summaries, and the evidence panel on every route. */
 export function reliabilityProfile(state: CommitmentState) {
   const window = commitmentsInWindow(state.commitments, state.asOf);
-  const result = calculateReliability(window);
+  const usable = new Set(state.evidence.filter(e => e.type === 'commitment-outcome' && contributesToPatterns(e)
+    && state.commitments.some(c => c.id === e.metadata.commitmentId && c.evidenceIds.includes(e.id) && c.status === e.metadata.outcome)).map(e => e.id));
+  const supported = window.filter(c => c.status === 'active' || c.status === 'cancelled' || c.evidenceIds.some(id => usable.has(id)));
+  const result = calculateReliability(supported);
   const eligible = new Set(result.eligibleCommitmentIds);
   const commitments = window.filter(c => eligible.has(c.id));
   const linkedIds = new Set(commitments.flatMap(c => c.evidenceIds));
-  const evidence = state.evidence.filter(e => linkedIds.has(e.id));
+  const evidence = state.evidence.filter(e => linkedIds.has(e.id) && usable.has(e.id));
   const confidence = (result.confidence[0].toUpperCase() + result.confidence.slice(1)) as 'Low' | 'Medium' | 'High';
   const pattern: BehavioralPattern = {
     id: 'reliability', title: 'Reliability', value: result.eligibleCommitments ? `${Math.round(result.followThroughRate)}%` : 'Not enough data',

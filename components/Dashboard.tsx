@@ -1,4 +1,5 @@
 'use client';
+import { patternWithEvidence } from '@/domain/patterns/evidence-profile';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -53,7 +54,7 @@ export function Dashboard() {
  const { state, dispatch, reliability } = useCommitments();
  const [selectedPattern,setSelectedPattern]=useState<BehavioralPattern|null>(null);
  const privateView=perspective==='Me';
- const visiblePatterns=[reliability.pattern, ...patterns].filter(p=>isShared(p,perspective));
+ const visiblePatterns=[reliability.pattern, ...patterns.map(p => patternWithEvidence(p, state.evidence))].filter(p=>isShared(p,perspective));
  const visibleEvidence=state.evidence.filter(e=>isShared(e,perspective));
  const visibleCommitments=state.commitments.filter(c=>privateView||c.visibility.some(a=>a===perspective.toLowerCase())).slice(0,5);
  const visibleReferences=references.filter(r=>isShared(r,perspective));

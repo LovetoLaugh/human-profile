@@ -1,3 +1,4 @@
+import { createEvidence } from '../domain/evidence/services';
 import { commitmentSeed } from './mocks/commitments';
 import type { User, CurrentState, WellbeingMetric, BehavioralPattern, EvidenceEvent, ProfilePerspective, ProfileReference } from '@/types/profile';
 export const user: User = { name: 'Adithya Rayaprolu', firstName: 'Adithya', initials: 'AR' };
@@ -12,15 +13,14 @@ export const wellbeing: WellbeingMetric[] = [
 export const supportedPerspectives: ProfilePerspective[] = ['Me', 'Employer', 'Landlord', 'Neighbor'];
 
 // Raw evidence is the source of truth. All records and verification are simulated.
-const verification = (kind: EvidenceEvent['kind']): EvidenceEvent['verification'] =>
- kind === 'Verified' ? 'Confirmed in mock records' : 'Not independently verified';
-const record = (event: Omit<EvidenceEvent, 'verification' | 'description' | 'sourceType' | 'verificationStatus' | 'relatedPattern' | 'visibility' | 'type' | 'metadata'>): EvidenceEvent => ({
- ...event, type: 'activity', verification: verification(event.kind), description: `${event.title}. Illustrative activity record.`,
+const record = (event: Pick<EvidenceEvent, 'id' | 'title' | 'timestamp' | 'category' | 'source' | 'kind' | 'icon' | 'perspectives' | 'pattern'>): EvidenceEvent => createEvidence({
+ ...event, type: 'activity', description: `${event.title}. Illustrative activity record.`,
  sourceType: event.kind.toLowerCase() as EvidenceEvent['sourceType'],
- verificationStatus: event.kind === 'Verified' ? 'mock-verified' : 'unverified',
+ provenance: event.kind === 'Verified' ? 'external-source' : event.kind === 'Observed' ? 'human-profile' : 'user',
+ sourceId: event.kind === 'Verified' ? `mock-organizer:${event.id}` : undefined,
  relatedPattern: event.pattern ?? null,
  visibility: event.perspectives.map(p => p.toLowerCase() as EvidenceEvent['visibility'][number]),
-});
+}, { id: `created:${event.id}`, at: event.timestamp, actor: { type: event.kind === 'Verified' ? 'external-source' : event.kind === 'Observed' ? 'human-profile' : 'user', source: event.source, sourceId: event.kind === 'Verified' ? `mock-organizer:${event.id}` : undefined, demo: true } });
 export const evidence: EvidenceEvent[] = [
  ...commitmentSeed.evidence,
  ...Array.from({ length: 24 }, (_, i) => record({ id: `interaction-${i + 1}`, pattern: 'relationships', title: `Supportive interaction ${i + 1}`, timestamp: new Date(Date.UTC(2026, 8, 8 - i * 6, 12)).toISOString(), category: 'Relationships', source: 'Connection activity log (mock)', kind: 'Observed', icon: 'people', perspectives: [] })),

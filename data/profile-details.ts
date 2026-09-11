@@ -1,3 +1,5 @@
+import { createEvidence } from '../domain/evidence/services';
+import { evidenceV2Demos } from './mocks/evidence';
 import { evidence as homeEvidence, patterns as homePatterns, wellbeing } from './profile';
 import type { AboutProfile, AudienceType, BehavioralPattern, EvidenceEvent, EvidenceKind, EvidenceSourceType, PermissionSettings, ProfileSection, ProfileTimelineEvent, WellbeingMetric } from '@/types/profile';
 
@@ -29,17 +31,16 @@ export const sourceLabels: Record<EvidenceSourceType, EvidenceKind> = { 'self-re
 
 // Historical domain outcomes plus activity and personal check-ins; counts are derived.
 // Source assignments are mock provenance, never claims of external verification.
-const extras: EvidenceEvent[] = Array.from({ length: 24 }, (_, i) => ({
+const extras: EvidenceEvent[] = Array.from({ length: 24 }, (_, i) => createEvidence({
  type: 'activity', id: `profile-checkin-${i + 1}`, title: i === 0 ? 'Feeling calm and focused' : i === 1 ? 'Financial check-in: stable' : `Personal check-in ${i + 1}`,
  description: i === 0 ? 'Updated current state: calm and focused, with low stress and good energy.' : i === 1 ? 'Personal reflection on financial routines. No accounts or payment systems connected.' : 'A user-provided reflection on everyday life.',
  category: i === 1 ? 'Financial' : 'Current State', timestamp: new Date(Date.UTC(2026, 8, 9 - i, 18, 25)).toISOString(),
- source: 'Personal check-in (mock)', kind: 'Self-reported', sourceType: 'self-reported',
- verification: 'Not independently verified', verificationStatus: 'unverified',
+ source: 'Personal check-in (mock)', sourceType: 'self-reported', provenance: 'user',
  relatedPattern: i === 1 ? 'financial' : null, pattern: i === 1 ? 'financial' : undefined,
  icon: 'profile', perspectives: [], visibility: i === 1 ? [] : ['friend', 'family'],
-}));
+}, { id: `created:profile-checkin-${i + 1}`, at: new Date(Date.UTC(2026, 8, 9 - i, 18, 25)).toISOString(), actor: { type: 'user', source: 'Owner (mock)', demo: true } }));
 // Commitment records retain the observed provenance produced by the domain service.
-export const profileEvidence: EvidenceEvent[] = [...homeEvidence, ...extras].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+export const profileEvidence: EvidenceEvent[] = [...homeEvidence, ...extras, ...evidenceV2Demos].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 export function evidenceCounts(records: EvidenceEvent[]) {
  return { 'self-reported': records.filter(e => e.sourceType === 'self-reported').length, observed: records.filter(e => e.sourceType === 'observed').length, verified: records.filter(e => e.sourceType === 'verified').length, total: records.length };
 }

@@ -8,12 +8,12 @@ const { profileEvidence, profilePatterns, initialPermissions, canSeeEvidence, ti
 const clone = plain;
 
 test('evidence totals reflect observed outcomes, not fabricated verification', () => {
- assert.deepEqual(clone(data.evidenceCounts(profileEvidence)), { 'self-reported': 32, observed: 80, verified: 18, total: 130 });
- assert.equal(new Set(profileEvidence.map(e => e.id)).size, 130);
+ assert.deepEqual(clone(data.evidenceCounts(profileEvidence)), { 'self-reported': 35, observed: 82, verified: 19, total: 136 });
+ assert.equal(new Set(profileEvidence.map(e => e.id)).size, 136);
  for (const event of profileEvidence) {
   assert.ok(event.description && event.category && event.source);
   assert.ok(Number.isFinite(Date.parse(event.timestamp)));
-  assert.equal(event.verificationStatus === 'mock-verified', event.sourceType === 'verified');
+  assert.equal(event.verificationStatus === 'verified', event.sourceType === 'verified');
  }
 });
 test('reliability and all pattern cards trace to underlying evidence', () => {
@@ -29,7 +29,7 @@ test('reliability and all pattern cards trace to underlying evidence', () => {
  assert.equal(profileEvidence.filter(e => e.pattern === 'growth').length, 8);
 });
 test('default audiences exclude private details and include intended evidence', () => {
- assert.equal(profileEvidence.filter(e => canSeeEvidence(e, 'me', initialPermissions)).length, 130);
+ assert.equal(profileEvidence.filter(e => canSeeEvidence(e, 'me', initialPermissions)).length, 136);
  assert.equal(profileEvidence.filter(e => canSeeEvidence(e, 'public', initialPermissions)).length, 0);
  for (const audience of ['employer', 'landlord', 'neighbor']) {
   const records = profileEvidence.filter(e => canSeeEvidence(e, audience, initialPermissions));

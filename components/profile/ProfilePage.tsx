@@ -31,6 +31,7 @@ export function ProfilePage() {
  const previewSelect = useRef<HTMLSelectElement>(null);
  const canSee = (section: ProfileSection) => audience === 'me' || permissions[section][audience];
  const records = profileEvidence.filter(e => canSeeEvidence(e, audience, permissions));
+ const currentEvidence = records.find(e => e.id === selectedEvidence?.id);
  function saveProfile(next: AboutProfile) {
   setAbout({ ...next, interests: next.interests.filter(s => s.trim()), goals: next.goals.filter(s => s.trim()), skills: next.skills.filter(s => s.trim()), values: next.values.filter(s => s.trim()) });
   setEditing(false); setNotice('Profile saved for this session.');
@@ -59,7 +60,7 @@ export function ProfilePage() {
   <footer className="page-footer"><span><span className="footer-dot"/> Your profile. Your context. Your choice.</span><span>Mock data · Changes reset on refresh</span></footer>
  </main></div>
  {editing && <ProfileModal title="Edit Profile" onClose={() => setEditing(false)}><AboutEditor initial={about} onSave={saveProfile} onCancel={() => setEditing(false)}/></ProfileModal>}
- {selectedEvidence && <EvidenceDetails preview={audience !== 'me'} event={selectedEvidence} onClose={() => setSelectedEvidence(null)}/>}
+ {currentEvidence && <EvidenceDetails key={currentEvidence.id} preview={audience !== 'me'} event={currentEvidence} onClose={() => setSelectedEvidence(null)}/>}
  {selectedPattern && (selectedPattern.id === 'reliability' ? <ReliabilityEvidencePanel visibleRecords={records} preview={audience !== 'me'} onClose={() => setSelectedPattern(null)}/> : <PatternDetails pattern={selectedPattern} allRecords={profileEvidence} visibleRecords={records} onClose={() => setSelectedPattern(null)}/>)}
  {sharing && <ProfileModal title="Share Profile — local preview" onClose={() => setSharing(false)}><div className="profile-detail"><p>Choose an audience to review the information you would share. This prototype does not publish your profile or create a live sharing link.</p><label className="share-audience">Audience<select value={shareAudience} onChange={e => setShareAudience(e.target.value as AudienceType)}>{audiences.map(a => <option value={a} key={a}>{a}</option>)}</select></label><h3>Included categories</h3><ul className="about-list">{(Object.keys(sectionLabels) as ProfileSection[]).filter(section => permissions[section][shareAudience]).map(section => <li key={section}>{sectionLabels[section]}</li>)}</ul><p>{profileEvidence.filter(e => canSeeEvidence(e, shareAudience, permissions)).length} selected evidence records are visible.</p><div className="profile-actions"><button className="profile-button" onClick={() => { setSharing(false); setTab('Permissions'); }}>Edit permissions</button><button className="profile-button primary" onClick={() => { setSharing(false); setShowPreview(true); viewAs(shareAudience); setTab('Overview'); }}>Preview shared profile</button></div></div></ProfileModal>}
  </div>;

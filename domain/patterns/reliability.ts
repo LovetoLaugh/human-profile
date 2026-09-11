@@ -14,6 +14,11 @@ export interface ReliabilityResult {
   eligibleCommitmentIds: string[];
 }
 
+/** Initial product policy. Source quality, verification and recency are future inputs, not weights today. */
+export function confidenceForObservations(count: number): ReliabilityConfidence {
+  return count < 5 ? 'low' : count < 20 ? 'medium' : 'high';
+}
+
 export function calculateReliability(commitments: readonly Commitment[]): ReliabilityResult {
   // IDs represent observations, so duplicate objects must never inflate counts.
   const unique = [...new Map(commitments.map(c => [c.id, c])).values()];
@@ -23,7 +28,7 @@ export function calculateReliability(commitments: readonly Commitment[]): Reliab
   const missed = count('missed');
   const eligibleCommitments = completed + completedLate + missed;
   // Initial transparent product rule based solely on sample size, not a scientific assessment.
-  const confidence = eligibleCommitments < 5 ? 'low' : eligibleCommitments < 20 ? 'medium' : 'high';
+  const confidence = confidenceForObservations(eligibleCommitments);
   return {
     eligibleCommitments, completed, completedLate, missed, cancelled: count('cancelled'), active: count('active'),
     followThroughRate: eligibleCommitments ? Math.round(completed / eligibleCommitments * 10000) / 100 : 0,

@@ -3,7 +3,7 @@ export type EvidenceKind = 'Self-reported' | 'Observed' | 'Verified';
 export interface User { name: string; firstName: string; initials: string; }
 export interface CurrentState { label: string; updated: string; metrics: { label: string; value: string; icon: string }[]; }
 export interface WellbeingMetric { label: string; value: string; unit?: string; change: string; color: string; values: number[]; }
-export type EvidenceSourceType = 'self-reported' | 'observed' | 'verified';
+export type EvidenceSourceType = import('../domain/evidence/types').EvidenceType;
 export type AudienceType = 'public' | 'friend' | 'neighbor' | 'employer' | 'landlord' | 'family';
 export type ProfileSection = 'about' | 'current-state' | 'wellbeing' | 'reliability' | 'work' | 'community' | 'family' | 'financial' | 'evidence' | 'interests' | 'growth' | 'references';
 export type PermissionSettings = Record<ProfileSection, Record<AudienceType, boolean>>;

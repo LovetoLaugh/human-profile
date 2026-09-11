@@ -60,7 +60,7 @@ test('one millisecond after the deadline is completed-late', () => {
 test('completion without a deadline counts as on time', () => {
  assert.equal(completeCommitment(active('no-due', { dueAt: undefined }), dueAt).commitment.status, 'completed');
 });
-test('all outcome services create observed, recorded evidence and preserve visibility', () => {
+test('all outcome services create observed, unverified evidence and preserve visibility', () => {
  for (const resolve of [completeCommitment, missCommitment, cancelCommitment]) {
   const original = active('visibility', { visibility: ['employer'] });
   const before = plain(original);
@@ -68,7 +68,7 @@ test('all outcome services create observed, recorded evidence and preserve visib
   assert.deepEqual(plain(original), before, 'does not mutate input');
   assert.equal(evidence.type, 'commitment-outcome');
   assert.equal(evidence.sourceType, 'observed');
-  assert.equal(evidence.verificationStatus, 'recorded');
+  assert.equal(evidence.verificationStatus, 'unverified');
   assert.equal(evidence.kind, 'Observed');
   assert.equal(evidence.relatedPattern, 'reliability');
   assert.equal(evidence.metadata.commitmentId, original.id);
@@ -119,7 +119,7 @@ test('deterministic history produces 50 completed, 2 late, 1 missed, 3 cancelled
  assert.equal(result.completed, 50); assert.equal(result.completedLate, 2); assert.equal(result.missed, 1);
  assert.equal(result.cancelled, 3); assert.equal(result.active, 2);
  assert.equal(result.followThroughRate, 94.34);
- assert.ok(seed.evidence.every(e => e.sourceType === 'observed' && e.verificationStatus === 'recorded'));
+ assert.ok(seed.evidence.every(e => e.sourceType === 'observed' && e.verificationStatus === 'unverified'));
 });
 test('the shared read model includes only evidence used for its calculation', () => {
  let state = createCommitmentSeed();
