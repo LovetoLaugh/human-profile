@@ -6,6 +6,8 @@ Human Profile is an experimental platform exploring how people can represent mor
 
 It does **not** determine whether someone is a “good” or “bad” person. It separates self-reported information, observed actions, independently verified information, and derived patterns—and makes the evidence behind patterns inspectable. Today, it is a local prototype with mock profile data and a working commitment-to-evidence pipeline.
 
+Current state describes temporary context, such as today’s self-reported well-being. Long-term patterns summarize observations over time; a temporary state or isolated outcome must not become a permanent conclusion about a person. Human Profile models human context, evidence, and behavioral patterns, not whether someone is honest/dishonest or trustworthy/untrustworthy.
+
 ## The Problem
 
 Professional history, financial history, social content, and health information typically live in separate systems. Human Profile explores a user-controlled contextual profile that combines current state, historical behavior, and supporting evidence while letting individuals choose what different audiences see.
@@ -35,20 +37,44 @@ The permission layer currently filters local previews; it is not server-enforced
 
 Commitment outcomes update Home and My Profile through shared session state. Client-side navigation preserves these changes; refreshing restores deterministic sample data. No external verification is connected: existing **Verified** labels represent mock confirmations only.
 
+### Mocked or unavailable today
+
+Most well-being signals, health information, work history, family information, references, and external verification are prototype data. Wearable data is not connected to a real integration. Persistent backend storage is not implemented: records and changes exist only in session memory. These screens and sample confirmations do not represent real integrations.
+
 ## Commitments + Evidence Pipeline
 
-**Commitment → Outcome → Evidence Event → Reliability Calculation → Profile Pattern**
+```text
+Commitment
+    ↓
+Outcome
+    ↓
+Evidence
+    ↓
+Pattern Engine
+    ↓
+Human Profile
+```
+
+Today, the pattern engine is the domain reliability calculation and shared profile read model, not a separate service.
 
 Active commitments resolve as completed on time, completed late, missed, or cancelled. Completion at or before the deadline is on time; completion after it is late. Without a deadline, completion counts as on time. Missed and cancelled outcomes are explicitly recorded by the user.
 
 ```text
-follow-through % = completedOnTime /
-                   (completedOnTime + completedLate + missed) × 100
+eligibleCommitments = completedOnTime + completedLate + missed
+followThroughRate = completedOnTime / eligibleCommitments * 100
 ```
 
-Active and cancelled commitments are excluded. The seeded history contains 50 on-time, 2 late, and 1 missed outcome: **94.34%**, displayed as **94%**. The profile uses a rolling six-calendar-month window, so fixed historical fixtures eventually age out.
+Active and cancelled commitments are excluded. The seeded history contains 50 on-time, 2 late, and 1 missed outcome: **50 / 53 × 100 = 94.34%**, displayed as **94%**. The profile uses a rolling six-calendar-month window, so fixed historical fixtures eventually age out.
 
 Each transition records an **Observed** evidence event—not **Verified** evidence—with its commitment ID, expected date, completion date, outcome, and visibility. The evidence panel exposes the calculation and supporting records without hiding late or missed outcomes.
+
+## Evidence Semantics
+
+- **Self-reported:** information explicitly entered by the user.
+- **Observed:** behavior or a state transition observed by Human Profile.
+- **Verified:** evidence independently confirmed by an external source.
+
+Completing a commitment inside Human Profile creates **Observed**, not **Verified**, evidence. It records the application transition without independently confirming that the underlying work happened. Existing verified sample records are mock data.
 
 ## Architecture
 
@@ -66,7 +92,9 @@ See [pipeline design and assumptions](docs/commitment-pipeline.md). The earlier 
 
 ## Engineering Decisions
 
-- Commitment business rules live outside React. Reliability reads recorded commitment outcomes and links to their generated evidence.
+- Business/domain logic lives outside React; UI components do not own reliability calculations.
+- Patterns should be derived from evidence and remain explainable. Today, reliability reads recorded commitment outcomes and links to their generated evidence; other patterns are mocked.
+- The domain design is event-oriented: important state transitions should be represented as events. Terminal commitment transitions currently create evidence atomically in memory; there is no durable event store or message broker.
 - Observed means an application-recorded action, not independent confirmation of the underlying work.
 - Active/cancelled commitments do not distort the denominator; duplicate dispatches do not duplicate evidence.
 - Confidence is explicit: **0–4 observations: Low; 5–19: Medium; 20+: High**. This initial product rule is not a scientific assessment.
@@ -85,11 +113,54 @@ Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, ESLint, and Node�
 
 ## AI-Assisted Development
 
-This project uses an AI-assisted engineering workflow with **OpenAI Codex** to accelerate implementation, refactoring, testing, and iteration. Product requirements, architecture decisions, domain modeling, constraints, and code review remain deliberate parts of the engineering process. AI-generated changes are inspected and validated rather than treated as proof of correctness.
+This project is being developed using an AI-assisted engineering workflow with OpenAI Codex.
+
+AI is used to accelerate implementation, refactoring, testing and iteration. Product requirements, architecture decisions, domain modeling, constraints and code review remain deliberate parts of the engineering process.
+
+## Backend Direction — Future Architecture
+
+Human Profile’s preferred future direction avoids a traditional relational-first backend: document-oriented persistence for flexible profile state, an event-oriented evidence model, and derived profile/read models. None of this persistence infrastructure is implemented today.
+
+Forms today act as event producers in the local flow: user actions dispatch domain commands, and outcome transitions generate evidence. The intended broader architecture is:
+
+```text
+User action / Form
+      ↓
+Domain Event
+      ↓
+Evidence
+      ↓
+Pattern Engine
+      ↓
+Human Profile
+```
+
+Later, wearables and external systems can become additional event producers:
+
+```text
+Wearables / External Systems
+          ↓
+        Kafka
+          ↓
+   Event Consumers
+          ↓
+   Normalized Evidence
+          ↓
+    Pattern Engine
+          ↓
+     Human Profile
+```
+
+**Kafka is not implemented today.** It would be introduced when asynchronous or high-volume integrations such as wearables justify it, rather than prematurely adding infrastructure to the local prototype.
 
 ## Roadmap — Future Work
 
-Persistent database and authentication; Evidence v2/provenance and external verification; evidence disputes/corrections; wearable and other API integrations; family aggregation; a richer permission engine; deployment and observability.
+- Non-relational persistent backend and authentication.
+- Evidence v2: richer evidence provenance, verification sources and verification status, correction/reversal, and disputes.
+- External verification and wearable integrations.
+- Kafka-based event ingestion when justified.
+- Family-level aggregation and a richer permission engine.
+- APIs, deployment, and observability.
 
 ## Privacy / Responsible Design
 
