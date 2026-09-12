@@ -1,29 +1,34 @@
 'use client';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import type { AudienceType } from '@/types/profile';
 import { audiences } from '@/data/profile-details';
 import { commitmentCategories, type CommitmentCategory, type NewCommitment } from '@/domain/commitments/types';
 import { createCommitment, deadlineFromLocalDate } from '@/domain/commitments/service';
+import { useCommitments } from './CommitmentProvider';
 import { ProfileModal } from '../profile/ProfileModal';
 
-export function NewCommitmentForm({ onSave, onClose }: { onSave: (input: NewCommitment, id: string, at: string) => void; onClose: () => void }) {
+export function NewCommitmentForm({ onSave, onClose }: { onSave: (input: NewCommitment, id: string, at: string) => Promise<boolean>; onClose: () => void }) {
+  const { error: persistenceError } = useCommitments();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<CommitmentCategory>('personal');
   const [visibility, setVisibility] = useState<AudienceType[]>([]);
+  const requestId = useRef<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    setSaving(true);
     try {
       const at = new Date().toISOString();
-      const id = crypto.randomUUID();
+      const id = requestId.current ??= crypto.randomUUID();
       const dueDate = String(new FormData(event.currentTarget as HTMLFormElement).get('dueDate') ?? '');
       const input = { title, description, category, dueAt: deadlineFromLocalDate(dueDate), visibility };
       createCommitment(input, id, at); // Domain validation before dispatching the atomic transaction.
-      onSave(input, id, at);
+      if (!await onSave(input, id, at)) setError('Save was not confirmed. Check the error above or reload saved data before retrying.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to create commitment.');
-    }
+    } finally { setSaving(false); }
   }
   return <ProfileModal title="New Commitment" onClose={onClose}>
     <form className="about-editor commitment-form" onSubmit={submit}>
@@ -40,8 +45,9 @@ export function NewCommitmentForm({ onSave, onClose }: { onSave: (input: NewComm
         {audiences.map(a => <label className="audience-option" key={a}><input type="checkbox" checked={visibility.includes(a)} onChange={e => setVisibility(current => e.target.checked ? [...current, a] : current.filter(item => item !== a))}/><span className="capitalize">{a}</span></label>)}
       </fieldset>
       <p>Outcome evidence inherits this selection. Profile category permissions still apply; no actual access is granted.</p>
+      {persistenceError && <p className="form-error" role="alert">{persistenceError}</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      <div className="profile-actions"><button type="button" className="profile-button" onClick={onClose}>Cancel</button><button className="profile-button primary" type="submit">Save commitment</button></div>
+      <div className="profile-actions"><button type="button" className="profile-button" onClick={onClose}>Cancel</button><button className="profile-button primary" type="submit" disabled={saving}>Save commitment</button></div>
     </form>
   </ProfileModal>;
 }

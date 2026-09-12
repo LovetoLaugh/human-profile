@@ -31,15 +31,15 @@ The permission layer currently filters local previews; it is not server-enforced
 | Area | Working functionality | Current limits |
 | --- | --- | --- |
 | Home `/` | Current state, mini trends, pattern cards, commitment summary, evidence feed; Me/Employer/Landlord/Neighbor previews | State, well-being, and non-reliability pattern labels are mocked |
-| My Profile `/profile` | Overview, Timeline, Evidence, About, Permissions; source counts/filters, evidence dialogs, editable About fields, audience controls | About/permissions are page-local; sharing opens a preview, not a public link |
-| Commitments `/commitments` | Creation, deadlines, audience selection, completion/missed/cancelled actions, status filters, reliability breakdown | Session memory; terminal outcomes cannot yet be corrected |
+| My Profile `/profile` | Overview, Timeline, Evidence, About, Permissions; source counts/filters, evidence dialogs, editable About fields, audience controls | About/permissions persist locally; sharing opens a preview, not a public link |
+| Commitments `/commitments` | Creation, deadlines, audience selection, completion/missed/cancelled actions, status filters, reliability breakdown | Server-side persistence; terminal outcomes cannot yet be corrected |
 | Shared interface | Reusable cards, responsive layouts, keyboard-operable tabs and native dialogs | Other sidebar destinations remain disabled |
 
-Commitment outcomes update Home and My Profile through shared session state. Client-side navigation preserves these changes; refreshing restores deterministic sample data. No external verification is connected: **Verified** labels and verification actions represent mock confirmations only.
+Commitment outcomes update Home and My Profile through a shared server-confirmed snapshot. Commitments, evidence/audit history, About fields, and permissions survive navigation, browser refresh, and local server restarts. No external verification is connected: **Verified** labels and verification actions represent mock confirmations only.
 
 ### Mocked or unavailable today
 
-Most well-being signals, health information, work history, family information, references, and external verification are prototype data. Wearable data is not connected to a real integration. Persistent backend storage is not implemented: records and changes exist only in session memory. These screens and sample confirmations do not represent real integrations.
+Most well-being signals, health information, work history, family information, references, and external verification are prototype data. Wearable data is not connected to a real integration. Backend v1 provides local JSON persistence; production database infrastructure is not implemented. These screens and sample confirmations do not represent real integrations.
 
 ## Commitments + Evidence Pipeline
 
@@ -89,15 +89,15 @@ Verification status is separate from type: **unverified, pending, verified, disp
 | Dispute | Requires a reason; excludes evidence from patterns while unresolved |
 | Correct text | Requires a reason and changed title/description; preserves before/after values and invalidates prior verification |
 | Resolve dispute | Requires a reason; restores the preceding status, or unverified if corrected; preserves every audit entry |
-| Revoke | Requires a reason; retains the record but permanently excludes it within this session; no restore action |
+| Revoke | Requires a reason; retains the record but excludes it across reloads; no restore action |
 
-Audit entries append IDs, timestamps, actors/sources, notes, and before/after snapshots of mutable fields. Backdated entries and duplicate IDs are rejected; equal timestamps preserve append order. Immutable origin, occurrence, entity metadata, and visibility remain on the record. This is inspectable in-memory history, not a durable or tamper-proof audit system.
+Audit entries append IDs, timestamps, actors/sources, notes, and before/after snapshots of mutable fields. Backdated entries and duplicate IDs are rejected; equal timestamps preserve append order. Immutable origin, occurrence, entity metadata, and visibility remain on the record. History is persisted locally with the evidence record. It is inspectable but not tamper-proof: someone with filesystem access can edit it.
 
 Open **My Profile → Evidence → a record** to inspect provenance, dates, visibility, pattern contribution, and audit history. Owner-only demo actions exercise all transitions, including text corrections. Audience previews retain existing filtering and hide owner audit notes and action controls. Revoked/disputed records remain inspectable in the owner view. Summary counts track current types and statuses; qualitative mock patterns update their eligible supporting records.
 
 Six additional deterministic private demo records show all requested states. The seed has **136 records: 35 self-reported, 82 observed, 19 verified**, including one pending, one disputed, and one revoked record. These examples do not change the **50/53 reliability fixture**.
 
-**Mock verification is not real external verification.** No external service is contacted. Changes survive client navigation but reset on refresh. Corrections currently cover evidence title/description; commitment outcome/date revisions, undoing revocation, and durable dispute workflows remain future work. Original provenance records the origin even when a later correction changes the current classification.
+**Mock verification is not real external verification.** No external service is contacted. Changes are saved server-side and survive refresh. Corrections currently cover evidence title/description; commitment outcome/date revisions, undoing revocation, and production dispute processing remain future work. Original provenance records the origin even when a later correction changes the current classification.
 
 Confidence remains count-based: 0–4 Low, 5–19 Medium, 20+ High. The separate confidence policy can later consider source quality, verification, and recency; none is weighted today.
 
@@ -109,7 +109,10 @@ Confidence remains count-based: 0–4 Low, 5–19 Medium, 20+ High. The separate
 | `domain/commitments/` | Validation, immutable state transitions, atomic outcome/evidence updates |
 | `domain/evidence/` | Evidence v2 models, immutable services, audit snapshots, and outcome generation |
 | `domain/patterns/` | Reliability calculation, observation window, shared profile read model |
-| `components/commitments/CommitmentProvider.tsx` | Root-layout React context/reducer for shared session state |
+| `components/commitments/CommitmentProvider.tsx` | Loads server snapshots; publishes only confirmed saves; loading/error/reload controls |
+| `app/api/profile-state/`, `server/` | Node route handlers, input validation, centralized development identity |
+| `application/` | Repository contracts and workflow orchestration |
+| `persistence/` | Atomic local file adapter and isolated memory test adapter |
 | `data/`, `data/mocks/` | Mock profile records and deterministic commitment fixtures |
 | `tests/` | Domain and profile-data tests |
 
@@ -119,7 +122,7 @@ See [pipeline design and assumptions](docs/commitment-pipeline.md). The earlier 
 
 - Business/domain logic lives outside React; UI components do not own reliability calculations.
 - Patterns should be derived from evidence and remain explainable. Today, reliability reads recorded commitment outcomes and links to their generated evidence; other patterns are mocked.
-- The domain design is event-oriented: important state transitions should be represented as events. Terminal commitment transitions currently create evidence atomically in memory; there is no durable event store or message broker.
+- The domain design is event-oriented: important state transitions should be represented as events. Terminal commitment transitions persist the outcome and generated evidence in one atomic transaction. This is event-oriented, not full event sourcing; no message broker is implemented.
 - Observed means an application-recorded action, not independent confirmation of the underlying work.
 - Active/cancelled commitments do not distort the denominator; duplicate dispatches do not duplicate evidence.
 - Confidence is explicit: **0–4 observations: Low; 5–19: Medium; 20+: High**. This initial product rule is not a scientific assessment.
@@ -128,7 +131,9 @@ See [pipeline design and assumptions](docs/commitment-pipeline.md). The earlier 
 
 ## Testing
 
-**52 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
+**75 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
+
+Backend tests additionally cover repository round trips, user isolation, reloads, seed/reset behavior, concurrent writes, atomic failure handling, authoritative request parsing, and persisted Evidence v2 eligibility. They use isolated temporary directories, never your runtime file.
 
 Run `npm test`. Tests use Node’s built-in runner and the existing TypeScript compiler, without an additional test framework.
 
@@ -142,69 +147,87 @@ This project is being developed using an AI-assisted engineering workflow with O
 
 AI is used to accelerate implementation, refactoring, testing and iteration. Product requirements, architecture decisions, domain modeling, constraints and code review remain deliberate parts of the engineering process.
 
-## Backend Direction — Future Architecture
-
-Human Profile’s preferred future direction avoids a traditional relational-first backend: document-oriented persistence for flexible profile state, an event-oriented evidence model, and derived profile/read models. None of this persistence infrastructure is implemented today.
-
-Forms today act as event producers in the local flow: user actions dispatch domain commands, and outcome transitions generate evidence. The intended broader architecture is:
+## Backend v1 — Implemented
 
 ```text
-User action / Form
-      ↓
-Domain Event
-      ↓
-Evidence
-      ↓
-Pattern Engine
-      ↓
-Human Profile
+Next.js UI
+    ↓
+Application/API layer
+    ↓
+Domain services
+    ↓
+Repository interfaces
+    ↓
+Local durable store
 ```
 
-Later, wearables and external systems can become additional event producers:
+`GET /api/profile-state` loads a user-scoped snapshot and derived reliability. `POST /api/profile-state` accepts commitment, evidence, or profile commands. The application service calls existing domain functions inside a repository transaction, then returns the persisted result. UI state is not optimistically changed; failed saves show an error and a reload control. Server timestamps and demo verification attribution are authoritative.
+
+The file adapter stores one versioned JSON document per user under **`.human-profile-data/<userId>.json`**. Commitment and evidence envelopes carry `ownerId`; the profile envelope holds About/permissions. A per-user filesystem lock serializes transactions across local processes. Writes flush a temporary file and atomically rename it, so outcome and evidence cannot be partially published. Repository interfaces keep files, JSON, React, Next.js, and AWS outside the domain layer. Reliability is calculated from saved records, never persisted as a primary score.
+
+The temporary identity is centralized in `server/development-session.ts` as `dev-user-001`. Routes do not accept browser-supplied owner IDs. This is **not authentication**: local clients share the development identity. Development and production-build preview commands bind to loopback; the API rejects foreign Host/Origin values. Use mock/dev data only.
+
+First access initializes existing deterministic commitments and all Evidence v2 examples if the user has no records. A saved profile marks initialization; reloads do not reseed. If a partial partition has records but no profile, only profile defaults are added. The initial fixture still gives **94.34% → 94%** within its observation window.
+
+To reset, **stop the server**, run `npm run reset:data`, then restart. The reset command moves the entire store to a recoverable timestamped backup and the next request seeds fresh data. Runtime files, locks, temporary writes, and default backups are gitignored. Optional server-only `HUMAN_PROFILE_DATA_DIR` selects another local directory; no environment file or credentials are required. Keep custom directories and their backups outside Git.
+
+See [Backend v1 details](docs/backend-v1.md) for transaction guarantees, reset/recovery, and limitations.
+
+## Future Backend Architecture
 
 ```text
-Wearables / External Systems
-          ↓
-        Kafka
-          ↓
-   Event Consumers
-          ↓
-   Normalized Evidence
-          ↓
-    Pattern Engine
-          ↓
-     Human Profile
+Next.js / Clients
+    ↓
+Application/API layer
+    ↓
+Domain services
+    ↓
+Repository interfaces
+    ↓
+DynamoDB
+
+External systems
+    ↓
+Kafka
+    ↓
+Consumers
+    ↓
+Same application/domain/evidence model
 ```
 
-**Kafka is not implemented today.** It would be introduced when asynchronous or high-volume integrations such as wearables justify it, rather than prematurely adding infrastructure to the local prototype.
+**DynamoDB and Kafka are not implemented.** The preferred future direction is document/key-value persistence, not a relational-first backend. A possible DynamoDB key strategy is `PK = USER#<userId>` with `SK = PROFILE`, `COMMITMENT#<id>`, or `EVIDENCE#<id>`. Audit history starts embedded; a future adapter must address growth, pagination, transaction limits, and conditional updates. No AWS SDK or adapter skeleton was added.
+
+Forms remain event producers through domain transitions and evidence. Wearables may eventually be additional producers. Introduce Kafka only when asynchronous/high-volume integration needs justify it.
 
 ## Roadmap — Future Work
 
-- Non-relational persistent backend and authentication.
-- Commitment outcome/date revisions, reversal workflows, and durable evidence audit/dispute storage. Evidence provenance, verification status, text corrections, disputes, and audit history already work locally.
+- Production DynamoDB adapter and authentication.
+- Commitment outcome/date revisions, reversal workflows, and production evidence audit/dispute operations. Evidence provenance, verification status, text corrections, disputes, and audit history already work locally.
 - External verification and wearable integrations.
 - Kafka-based event ingestion when justified.
 - Family-level aggregation and a richer permission engine.
-- APIs, deployment, and observability.
+- Public/integration APIs, production deployment, and observability.
 
 ## Privacy / Responsible Design
 
-The design prioritizes user control, purpose-specific sharing, evidence provenance, explainable patterns, and avoiding opaque character scoring. This is an experimental personal project using mock data. All records ship in the client bundle; UI visibility controls are not a security boundary. There is no authentication, real sharing, or connected health/financial data.
+The design prioritizes user control, purpose-specific sharing, evidence provenance, explainable patterns, and avoiding opaque character scoring. This is an experimental personal project using mock data. The development API returns the owner’s full saved snapshot; UI audience previews are not a security boundary. Sample fixtures also remain in the client bundle for illustrative sections. There is no authentication, real sharing, or connected health/financial data.
 
 ## Local Development
 
 ```bash
 npm install
-npm run dev       # http://localhost:3000
+npm run dev       # http://127.0.0.1:3000
 npm test
 npm run lint
 npm run typecheck
 npm run build
-npm start         # serve the production build
+npm start         # preview the production build on loopback
+# Stop the server before resetting:
+npm run reset:data # archive local data; next access seeds fresh mock records
 ```
 
 Stop the dev server before building; both use `.next/`. Keep credentials, `.env` files, dependency folders, and generated output out of Git.
 
 ## Project Status
 
-**Active personal product project / experimental prototype.** The commitment pipeline is functional locally; persistence, external verification, and production access controls are future work.
+**Active personal product project / experimental prototype.** The commitment pipeline and local durable persistence are functional; production DynamoDB, external verification, and production access controls are future work.

@@ -10,7 +10,7 @@ const actionLabels: Record<EvidenceCommand['action'], string> = {
  'dispute-resolved': 'Resolve dispute', corrected: 'Correct text', revoked: 'Revoke',
 };
 export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent; preview: boolean }) {
- const { dispatch, reliability } = useCommitments();
+ const { dispatch, reliability, saving, error: persistenceError } = useCommitments();
  const [reason, setReason] = useState('');
  const [title, setTitle] = useState(event.title);
  const [description, setDescription] = useState(event.description);
@@ -20,7 +20,7 @@ export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent;
  const contribution = !eligible ? `Excluded: ${event.verificationStatus}.`
   : event.relatedPattern === 'reliability' ? reliability.evidence.some(e => e.id === event.id) ? 'Included in the current reliability calculation.' : 'Not included: outside the observation window or not an eligible commitment outcome.'
   : event.relatedPattern ? 'Available as supporting evidence for an illustrative pattern; no additional score is calculated.' : 'No profile pattern is linked.';
- function act(action: EvidenceCommand['action']) {
+ async function act(action: EvidenceCommand['action']) {
   try {
    const source = { type: 'external-source' as const, source: 'Independent reviewer (mock)', sourceId: 'demo-reviewer', demo: true };
    const context: EvidenceContext = { id: crypto.randomUUID(), at: new Date().toISOString(),
@@ -28,8 +28,8 @@ export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent;
     note: reason || (action === 'verified' ? 'Simulated independent confirmation; no external system was contacted.' : undefined) };
    const command: EvidenceCommand = action === 'verified' ? { action, source } : action === 'corrected' ? { action, changes: { title, description } } : { action };
    applyEvidenceCommand(event, command, context);
-   dispatch({ type: 'evidence', id: event.id, command, context, at: context.at });
-   setNotice(`${actionLabels[action]} recorded for this session.`); setEditing(false); setReason('');
+   if (!await dispatch({ type: 'evidence', id: event.id, command, context, at: context.at })) { setNotice('Save was not confirmed. Check the persistence error and reload before retrying.'); return; }
+   setNotice(`${actionLabels[action]} saved locally.`); setEditing(false); setReason('');
   } catch (error) { setNotice(error instanceof Error ? error.message : 'Unable to update evidence.'); }
  }
  return <section className="profile-detail">
@@ -44,7 +44,7 @@ export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent;
    <dt>Why this exists</dt><dd>{event.type === 'commitment-outcome' ? 'Human Profile recorded a commitment outcome. This does not independently confirm the work.' : 'An activity or statement was recorded by the source above.'}</dd>
    <dt>Pattern</dt><dd>{event.relatedPattern ?? 'None'} · {contribution}</dd>
   </dl>
-  {!preview && <><h3>Audit history</h3><p>History is retained for this session. Verification actions are mock demonstrations.</p><ol className="evidence-audit-list">{event.auditHistory.map(entry => <li key={entry.id}>
+  {!preview && <><h3>Audit history</h3><p>History is saved on this computer. Verification actions are mock demonstrations.</p><ol className="evidence-audit-list">{event.auditHistory.map(entry => <li key={entry.id}>
    <strong>{entry.action}</strong> · <time dateTime={entry.timestamp}>{entry.timestamp}</time>
    <p>{entry.actor.source} ({entry.actor.type}){entry.actor.sourceId && ` · ${entry.actor.sourceId}`}{entry.actor.demo && ' · Demo'}</p>
    {entry.note && <p>{entry.note}</p>}
@@ -53,8 +53,9 @@ export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent;
   {availableEvidenceActions(event).length > 0 && <section><h3>Prototype actions</h3><p>Local demo only. Nothing is sent to an external verifier. Disputes, corrections, resolution and revocation require a reason.</p>
    <label className="evidence-field">Reason / note<textarea value={reason} maxLength={2000} onChange={e => setReason(e.target.value)}/></label>
    {editing && <><p>Text corrections preserve the original history and invalidate prior verification. Commitment outcomes and dates require a future revision workflow.</p><label className="evidence-field">Title<input value={title} maxLength={160} onChange={e => setTitle(e.target.value)}/></label><label className="evidence-field">Description<textarea value={description} maxLength={2000} onChange={e => setDescription(e.target.value)}/></label></>}
-   <div className="profile-actions">{availableEvidenceActions(event).map(action => <button key={action} className="profile-button" onClick={() => action === 'corrected' && !editing ? setEditing(true) : act(action)}>{action === 'corrected' && editing ? 'Save correction' : actionLabels[action]}</button>)}</div>
+   <div className="profile-actions">{availableEvidenceActions(event).map(action => <button disabled={saving} key={action} className="profile-button" onClick={() => action === 'corrected' && !editing ? setEditing(true) : act(action)}>{action === 'corrected' && editing ? 'Save correction' : actionLabels[action]}</button>)}</div>
   </section>}
+  {persistenceError && <p role="alert">{persistenceError}</p>}
   {notice && <p role="status">{notice}</p>}</>}
   {preview && <p>Owner audit notes and editing controls are private.</p>}
  </section>;

@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { Sidebar, TopBar } from '../Dashboard';
 import { Icon } from '../Icon';
-import { audiences, canSeeEvidence, initialAbout, initialPermissions, sectionLabels } from '@/data/profile-details';
+import { audiences, canSeeEvidence, sectionLabels } from '@/data/profile-details';
 import type { AboutProfile, AudienceType, BehavioralPattern, EvidenceEvent, ProfileSection } from '@/types/profile';
 import { ProfileHeader } from './ProfileHeader';
 import { ProfileTabs, type ProfileTab } from './ProfileTabs';
@@ -15,11 +15,10 @@ import { ProfileModal } from './ProfileModal';
 import { useCommitments } from '../commitments/CommitmentProvider';
 import { ReliabilityEvidencePanel } from '../evidence/ReliabilityEvidencePanel';
 export function ProfilePage() {
- const { state } = useCommitments();
+ const { state, profile, saveProfile: persistProfile } = useCommitments();
  const profileEvidence = state.evidence;
  const [tab, setTab] = useState<ProfileTab>('Overview');
- const [about, setAbout] = useState(initialAbout);
- const [permissions, setPermissions] = useState(initialPermissions);
+ const { about, permissions } = profile;
  const [audience, setAudience] = useState<AudienceType | 'me'>('me');
  const [showPreview, setShowPreview] = useState(false);
  const [editing, setEditing] = useState(false);
@@ -32,15 +31,17 @@ export function ProfilePage() {
  const canSee = (section: ProfileSection) => audience === 'me' || permissions[section][audience];
  const records = profileEvidence.filter(e => canSeeEvidence(e, audience, permissions));
  const currentEvidence = records.find(e => e.id === selectedEvidence?.id);
- function saveProfile(next: AboutProfile) {
-  setAbout({ ...next, interests: next.interests.filter(s => s.trim()), goals: next.goals.filter(s => s.trim()), skills: next.skills.filter(s => s.trim()), values: next.values.filter(s => s.trim()) });
-  setEditing(false); setNotice('Profile saved for this session.');
+ async function saveProfile(next: AboutProfile) {
+  setNotice('');
+  if (!await persistProfile({ permissions, about: { ...next, interests: next.interests.filter(s => s.trim()), goals: next.goals.filter(s => s.trim()), skills: next.skills.filter(s => s.trim()), values: next.values.filter(s => s.trim()) } })) return;
+  setEditing(false); setNotice('Profile saved on this computer.');
  }
  function viewAs(next: AudienceType | 'me') {
   setAudience(next); setSelectedEvidence(null); setSelectedPattern(null); setNotice('');
  }
- function toggle(section: ProfileSection, target: AudienceType) {
-  setPermissions(previous => ({ ...previous, [section]: { ...previous[section], [target]: !previous[section][target] } }));
+ async function toggle(section: ProfileSection, target: AudienceType) {
+  setNotice('');
+  if (!await persistProfile({ about, permissions: { ...permissions, [section]: { ...permissions[section], [target]: !permissions[section][target] } } })) return;
   setNotice(`${sectionLabels[section]} visibility updated for ${target}. Other categories are unchanged.`);
  }
  return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to profile</a><Sidebar/><div className="workspace"><TopBar label="My Profile"/><main id="main-content" className="profile-page">
@@ -57,7 +58,7 @@ export function ProfilePage() {
    {tab === 'About' && <ProfileAbout profile={about} showAbout={canSee('about')} showInterests={canSee('interests')} editable={audience === 'me'} onEdit={() => setEditing(true)}/>}
    {tab === 'Permissions' && <PermissionMatrix permissions={permissions} onToggle={toggle}/>}
   </div>
-  <footer className="page-footer"><span><span className="footer-dot"/> Your profile. Your context. Your choice.</span><span>Mock data · Changes reset on refresh</span></footer>
+  <footer className="page-footer"><span><span className="footer-dot"/> Your profile. Your context. Your choice.</span><span>Mock data · Saved on this computer</span></footer>
  </main></div>
  {editing && <ProfileModal title="Edit Profile" onClose={() => setEditing(false)}><AboutEditor initial={about} onSave={saveProfile} onCancel={() => setEditing(false)}/></ProfileModal>}
  {currentEvidence && <EvidenceDetails key={currentEvidence.id} preview={audience !== 'me'} event={currentEvidence} onClose={() => setSelectedEvidence(null)}/>}

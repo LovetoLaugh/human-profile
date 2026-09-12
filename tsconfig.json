@@ -36,7 +36,10 @@
     "data/**/*.ts",
     "types/**/*.ts",
     ".next/types/**/*.ts",
-    "domain/**/*.ts"
+    "domain/**/*.ts",
+    "application/**/*.ts",
+    "persistence/**/*.ts",
+    "server/**/*.ts"
   ],
   "exclude": [
     "node_modules",

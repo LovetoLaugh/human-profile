@@ -18,9 +18,11 @@ export function CommitmentsPage() {
   const [notice, setNotice] = useState('');
   const [showReliability, setShowReliability] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceEvent | null>(null);
+  const currentEvidence = state.evidence.find(e => e.id === selectedEvidence?.id);
   const filtered = state.commitments.filter(c => filter === 'all' || c.status === filter);
-  function recordOutcome(type: 'complete' | 'miss' | 'cancel', id: string) {
-    dispatch({ type, id, at: new Date().toISOString() });
+  async function recordOutcome(type: 'complete' | 'miss' | 'cancel', id: string) {
+    setNotice('');
+    if (!await dispatch({ type, id, at: new Date().toISOString() })) return;
     setNotice(type === 'cancel' ? 'Commitment cancelled. Its evidence is recorded and it is excluded from reliability.' : 'Outcome recorded as Observed evidence. Home and My Profile now reflect this outcome.');
   }
   return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to commitments</a><Sidebar/><div className="workspace"><TopBar label="Commitments"/>
@@ -31,10 +33,10 @@ export function CommitmentsPage() {
       {notice && <p className="profile-notice" role="status">{notice}</p>}
       <section className="card commitment-page-list" aria-label="Commitments list">{filtered.slice(0, limit).map(commitment => <CommitmentListItem key={commitment.id} commitment={commitment} onAction={recordOutcome} onEvidence={() => setSelectedEvidence(state.evidence.find(e => commitment.evidenceIds.includes(e.id)) ?? null)}/>)}{filtered.length === 0 && <div className="empty-state"><h3>No {filter === 'all' ? '' : commitmentStatusLabels[filter].toLowerCase()} commitments</h3><p>New commitments start active. Record an outcome when you&apos;re ready.</p></div>}</section>
       {filtered.length > limit && <button className="profile-button load-more" onClick={() => setLimit(limit + 12)}>Show more commitments ({filtered.length - limit} remaining)</button>}
-      <footer className="page-footer"><span>Cancelled and active commitments do not affect follow-through.</span><span>Sample history · Session changes reset on refresh</span></footer>
+      <footer className="page-footer"><span>Cancelled and active commitments do not affect follow-through.</span><span>Sample history · Saved on this computer</span></footer>
     </main></div>
-    {creating && <NewCommitmentForm onClose={() => setCreating(false)} onSave={(input, id, at) => { dispatch({ type: 'create', input, id, at }); setCreating(false); setFilter('active'); setNotice('Commitment created. No outcome evidence is generated until it is resolved.'); }}/>} 
+    {creating && <NewCommitmentForm onClose={() => setCreating(false)} onSave={async (input, id, at) => { if (!await dispatch({ type: 'create', input, id, at })) return false; setCreating(false); setFilter('active'); setNotice('Commitment created. No outcome evidence is generated until it is resolved.'); return true; }}/>}
     {showReliability && <ReliabilityEvidencePanel visibleRecords={state.evidence} onClose={() => setShowReliability(false)}/>}
-    {selectedEvidence && <EvidenceDetails event={selectedEvidence} onClose={() => setSelectedEvidence(null)}/>}
+    {currentEvidence && <EvidenceDetails key={currentEvidence.id} event={currentEvidence} onClose={() => setSelectedEvidence(null)}/>}
   </div>;
 }

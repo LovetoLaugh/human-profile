@@ -1,6 +1,6 @@
 # Commitment → outcome → evidence → reliability → profile
 
-The first live data flow runs locally in a root-layout React provider. Navigating with the application links preserves it across Home, My Profile, and Commitments. Refreshing the browser restores deterministic mock history. There is no database, API, account, or localStorage persistence.
+The data flow uses a root-layout React provider backed by the local Next.js API, application service, and file repository. Commitments and Evidence v2 history survive navigation, refresh, and server restarts. No account, external database service, or browser localStorage is required. See [Backend v1](backend-v1.md).
 
 ## Domain boundaries
 
@@ -20,7 +20,7 @@ Follow-through rate = completed on time / eligible commitments × 100.
 
 The domain result is rounded to two decimal places; the UI rounds that value to a whole percentage. No eligible commitments produces a finite zero in the domain and a “Not enough data”/dash presentation. Cancelled and active commitments are excluded. Deduplication by commitment ID prevents repeated objects from inflating observations.
 
-The profile read model selects outcomes by `resolvedAt` within the last six calendar months, inclusive, ending at the current session clock. Calendar subtraction clamps to the last day of shorter months. The provider refreshes the clock every minute and advances it when actions occur. The standalone `calculateReliability(commitments)` function operates on all commitments supplied to it; window selection is separate and testable.
+The profile read model selects outcomes by `resolvedAt` within the last six calendar months, inclusive, ending at the current session clock. Calendar subtraction clamps to the last day of shorter months. The server supplies the clock on reads and actions; the provider refreshes its snapshot every minute and on window focus. The standalone `calculateReliability(commitments)` function operates on all commitments supplied to it; window selection is separate and testable.
 
 Initial sample: 50 completed on time, 2 completed late, 1 missed, 3 cancelled, and 2 active. Thus 50 / 53 × 100 = 94.34%, displayed as 94%. All terminal mock records are produced through the same transition service as new actions. The fixture dates and IDs are fixed; when the real clock advances sufficiently, older outcomes intentionally leave the six-month window.
 
@@ -47,10 +47,10 @@ Both pages now read the same commitment evidence without rewriting provenance to
 
 `npm test` uses Node’s test runner and the existing TypeScript compiler, with no added dependency. Tests cover requested rates, exclusions, zero observations, confidence boundaries, duplicate IDs, exact/late/timezone deadlines, invalid input, immutable transitions, atomic/idempotent outcome generation, deterministic fixtures, record traceability, permission isolation, and calendar-window boundaries.
 
-Current limits: session memory only; evidence text corrections are audited, but commitment outcome/date revisions and undoing revocation are not implemented. No real external verification or enforcement beyond the UI exists. Existing evidence presentation fields (`kind`, `verification`, `perspectives`, etc.) are retained as a compatibility adapter alongside normalized domain fields. They should eventually move to dedicated view models. About and permission state remain page-local as before, and non-commitment pattern labels are illustrative. Historical timeline groups remain anchored to the sample date; new outcomes appear separately under Recent updates.
+Current limits: local file storage only; evidence text corrections are audited, but commitment outcome/date revisions and undoing revocation are not implemented. No real external verification or enforcement beyond the UI exists. Existing evidence presentation fields (`kind`, `verification`, `perspectives`, etc.) are retained as a compatibility adapter alongside normalized domain fields. They should eventually move to dedicated view models. About and permission state are also persisted, and non-commitment pattern labels are illustrative. Historical timeline groups remain anchored to the sample date; new outcomes appear separately under Recent updates.
 
 ## Evidence v2 eligibility and history
 
 The shared read model requires matching outcome evidence with an eligible status. Disputed and revoked records are excluded; a resolved dispute restores participation unless another exclusion (such as the observation window) applies. Verified records receive no additional weight. Pure reliability arithmetic still operates on the commitments supplied to it; evidence eligibility is selected before calling it.
 
-Evidence actions use the existing shared reducer. Domain services append chronological before/after snapshots; meaningful changes never overwrite prior entries. Text corrections reset verification, and corrections during a dispute remain excluded until resolution. Revocation retains owner-visible history. Evidence origin, occurrence time, entity metadata, and visibility cannot be edited through the text-correction operation. See the README’s Evidence v2 section for the local demo workflow and remaining limitations.
+The application service calls the existing domain reducer inside an atomic repository transaction. The provider displays the confirmed server response. Domain services append chronological before/after snapshots; meaningful changes never overwrite prior entries. Text corrections reset verification, and corrections during a dispute remain excluded until resolution. Revocation retains owner-visible history. Evidence origin, occurrence time, entity metadata, and visibility cannot be edited through the text-correction operation. See the README’s Evidence v2 section for the local demo workflow and remaining limitations.

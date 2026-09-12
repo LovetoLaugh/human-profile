@@ -76,7 +76,7 @@ export function Dashboard() {
     {visibleCommitments.length>0&&<CommitmentsList items={visibleCommitments} readOnly={!privateView} onToggle={id=>dispatch({type:'complete',id,at:new Date().toISOString()})}/>}
     <EvidenceFeed items={visibleEvidence}/>
    </aside></div>
-   <footer className="page-footer"><span><span className="footer-dot"/> Private by design. Human by nature.</span><span>Mock evidence & verification · Changes last for this session</span></footer>
+   <footer className="page-footer"><span><span className="footer-dot"/> Private by design. Human by nature.</span><span>Mock evidence & verification · Saved on this computer</span></footer>
   </main></div>
   {selectedPattern&&(selectedPattern.id==='reliability'?<ReliabilityEvidencePanel visibleRecords={visibleEvidence} preview={!privateView} onClose={()=>setSelectedPattern(null)}/>:<EvidencePanel pattern={selectedPattern} perspective={perspective} onClose={()=>setSelectedPattern(null)}/>)}
  </div>;
