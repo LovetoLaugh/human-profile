@@ -11,7 +11,7 @@ import type { EvidenceEvent } from '@/types/profile';
 import { commitmentStatusLabels, type CommitmentStatus } from '@/domain/commitments/types';
 
 export function CommitmentsPage() {
-  const { state, dispatch, reliability } = useCommitments();
+  const { state, dispatch, reliability, dataNotice } = useCommitments();
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<CommitmentStatus | 'all'>('active');
   const [limit, setLimit] = useState(12);
@@ -33,7 +33,7 @@ export function CommitmentsPage() {
       {notice && <p className="profile-notice" role="status">{notice}</p>}
       <section className="card commitment-page-list" aria-label="Commitments list">{filtered.slice(0, limit).map(commitment => <CommitmentListItem key={commitment.id} commitment={commitment} onAction={recordOutcome} onEvidence={() => setSelectedEvidence(state.evidence.find(e => commitment.evidenceIds.includes(e.id)) ?? null)}/>)}{filtered.length === 0 && <div className="empty-state"><h3>No {filter === 'all' ? '' : commitmentStatusLabels[filter].toLowerCase()} commitments</h3><p>New commitments start active. Record an outcome when you&apos;re ready.</p></div>}</section>
       {filtered.length > limit && <button className="profile-button load-more" onClick={() => setLimit(limit + 12)}>Show more commitments ({filtered.length - limit} remaining)</button>}
-      <footer className="page-footer"><span>Cancelled and active commitments do not affect follow-through.</span><span>Sample history · Saved on this computer</span></footer>
+      <footer className="page-footer"><span>Cancelled and active commitments do not affect follow-through.</span><span>{dataNotice}</span></footer>
     </main></div>
     {creating && <NewCommitmentForm onClose={() => setCreating(false)} onSave={async (input, id, at) => { if (!await dispatch({ type: 'create', input, id, at })) return false; setCreating(false); setFilter('active'); setNotice('Commitment created. No outcome evidence is generated until it is resolved.'); return true; }}/>}
     {showReliability && <ReliabilityEvidencePanel visibleRecords={state.evidence} onClose={() => setShowReliability(false)}/>}

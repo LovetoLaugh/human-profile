@@ -1,7 +1,7 @@
 import { createEvidence } from '../domain/evidence/services';
 import { commitmentSeed } from './mocks/commitments';
 import type { User, CurrentState, WellbeingMetric, BehavioralPattern, EvidenceEvent, ProfilePerspective, ProfileReference } from '@/types/profile';
-export const user: User = { name: 'Adithya Rayaprolu', firstName: 'Adithya', initials: 'AR' };
+export const user: User = { name: 'Alex Morgan', firstName: 'Alex', initials: 'AM' };
 export const perspectives: ProfilePerspective[] = ['Me', 'Family', 'Friend', 'Neighbor', 'Employer', 'Landlord', 'Custom'];
 export const currentState: CurrentState = { label: 'Calm & Focused', updated: '5 minutes ago', metrics: [{ label: 'Stress', value: 'Low', icon: 'leaf' }, { label: 'Energy', value: 'Good', icon: 'bolt' }, { label: 'Focus', value: 'High', icon: 'focus' }, { label: 'Social', value: 'Available', icon: 'people' }] };
 export const wellbeing: WellbeingMetric[] = [

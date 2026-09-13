@@ -13,14 +13,16 @@ import { user, currentState, wellbeing, patterns, perspectives, supportedPerspec
 import type { BehavioralPattern, Commitment, ProfilePerspective, WellbeingMetric, EvidenceEvent } from '@/types/profile';
 
 export function Sidebar() {
+ const { mode } = useCommitments();
  const pathname = usePathname();
  const nav = [['home','Home'], ['profile','My Profile'], ['heart','Family'], ['share','Share & Access'], ['people','Connections'], ['check','Commitments'], ['community','Community'], ['growth','Insights'], ['shield','Privacy'], ['settings','Settings']];
  return <aside className="sidebar"><Link className="brand" href="/" aria-label="Human Profile home"><span className="brand-mark"><span/><span/><span/></span><span>human profile<span className="tagline">People. Context. Trust.</span></span></Link><div className="nav-label">YOUR SPACE</div><nav>{nav.map(([icon,label],i)=> {
  const href = i === 0 ? '/' : i === 1 ? '/profile' : i === 5 ? '/commitments' : null;
+ if (!href && mode === 'public-demo') return null;
  const active = pathname === href;
  const content = <><Icon name={icon}/><span>{label}</span>{active&&<span className="active-dot"/>}</>;
  return href ? <Link key={label} href={href} className={`nav-item ${active?'active':''}`} aria-current={active?'page':undefined}>{content}</Link> : <button key={label} className={`nav-item ${i===8?'nav-divider':''}`} disabled title="Coming in a future release">{content}</button>;
- })}</nav><div className="sidebar-bottom"><div className="privacy-note"><span className="privacy-icon"><Icon name="lock" size={18}/></span><strong>Your story. Your control.</strong><p>You decide what to share,<br/>and who gets to see it.</p></div><div className="sidebar-user"><span className="avatar">AR</span><span><strong>Adithya Rayaprolu</strong><small>Personal workspace</small></span><Icon name="chevron" size={16}/></div></div></aside>;
+ })}</nav><div className="sidebar-bottom"><div className="privacy-note"><span className="privacy-icon"><Icon name="lock" size={18}/></span><strong>Your story. Your control.</strong><p>You decide what to share,<br/>and who gets to see it.</p></div><div className="sidebar-user"><span className="avatar">AM</span><span><strong>Alex Morgan</strong><small>Personal workspace</small></span><Icon name="chevron" size={16}/></div></div></aside>;
 }
 export function TopBar({ label = 'Overview' }: { label?: string }) {
  const [query,setQuery]=useState(''); const [notifications,setNotifications]=useState(false);
@@ -51,7 +53,7 @@ export function EvidenceFeed({items}:{items:EvidenceEvent[]}) {
 }
 export function Dashboard() {
  const [perspective,setPerspective]=useState<ProfilePerspective>('Me');
- const { state, dispatch, reliability } = useCommitments();
+ const { state, dispatch, reliability, mode, dataNotice } = useCommitments();
  const [selectedPattern,setSelectedPattern]=useState<BehavioralPattern|null>(null);
  const privateView=perspective==='Me';
  const visiblePatterns=[reliability.pattern, ...patterns.map(p => patternWithEvidence(p, state.evidence))].filter(p=>isShared(p,perspective));
@@ -62,7 +64,8 @@ export function Dashboard() {
  return <div className="app-shell">
   <a className="skip-link" href="#main-content">Skip to dashboard</a><Sidebar/>
   <div className="workspace"><TopBar/><main id="main-content">
-   <div className="page-heading"><div><div className="eyebrow greeting-eyebrow">YOUR LIFE, IN CONTEXT</div><h1>Good evening, Adithya <span className="greeting-sun">☀</span></h1><p>Here’s your current state and what matters most.</p></div><span className="date-label"><span/> Wednesday, September 9 <span className="demo-badge">Demo</span></span></div>
+   {mode === 'public-demo' && <section className="card demo-introduction"><span className="eyebrow">INTERACTIVE PRODUCT PROTOTYPE</span><h1>Human Profile</h1><p className="demo-tagline">People. Context. Trust.</p><p>A platform for understanding human context through evidence, patterns, and purpose-based sharing.</p><p>Go beyond a static bio: see current context alongside patterns supported by inspectable evidence.</p><div className="profile-actions"><Link className="profile-button primary" href="/profile">Explore Demo Profile</Link><a className="profile-button" href="#how-it-works">How It Works</a></div><div id="how-it-works"><h2>Actions become context</h2><p>Commitment → Outcome → Evidence → Pattern → Profile</p><p><strong>Try this:</strong> <Link href="/commitments">Create a commitment</Link>, complete or miss it, then open its evidence to inspect provenance and audit history. In <Link href="/profile">My Profile</Link>, try View As and the Permissions tab.</p><small>Profile information, health signals, and reference confirmations are fictional. Demo dates use a simulated September 2026 timeline.</small></div></section>}
+   <div className="page-heading"><div><div className="eyebrow greeting-eyebrow">YOUR LIFE, IN CONTEXT</div><h1>Good evening, {user.firstName} <span className="greeting-sun">☀</span></h1><p>Here’s your current state and what matters most.</p></div><span className="date-label"><span/> Wednesday, September 9 <span className="demo-badge">Demo</span></span></div>
    <ProfilePerspectiveSelector value={perspective} onChange={changePerspective}/>
    {!privateView&&<div className="preview-banner" role="status"><Icon name="shield" size={18}/><span>Previewing what {perspective==='Employer'?'an':'a'} <strong>{perspective}</strong> can see</span><button onClick={()=>changePerspective('Me')}>Back to my view</button></div>}
    <div className="dashboard-grid"><div className="main-column">
@@ -76,7 +79,7 @@ export function Dashboard() {
     {visibleCommitments.length>0&&<CommitmentsList items={visibleCommitments} readOnly={!privateView} onToggle={id=>dispatch({type:'complete',id,at:new Date().toISOString()})}/>}
     <EvidenceFeed items={visibleEvidence}/>
    </aside></div>
-   <footer className="page-footer"><span><span className="footer-dot"/> Private by design. Human by nature.</span><span>Mock evidence & verification · Saved on this computer</span></footer>
+   <footer className="page-footer"><span><span className="footer-dot"/> Private by design. Human by nature.</span><span>{dataNotice}</span></footer>
   </main></div>
   {selectedPattern&&(selectedPattern.id==='reliability'?<ReliabilityEvidencePanel visibleRecords={visibleEvidence} preview={!privateView} onClose={()=>setSelectedPattern(null)}/>:<EvidencePanel pattern={selectedPattern} perspective={perspective} onClose={()=>setSelectedPattern(null)}/>)}
  </div>;

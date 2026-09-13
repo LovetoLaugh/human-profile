@@ -15,7 +15,7 @@ import { ProfileModal } from './ProfileModal';
 import { useCommitments } from '../commitments/CommitmentProvider';
 import { ReliabilityEvidencePanel } from '../evidence/ReliabilityEvidencePanel';
 export function ProfilePage() {
- const { state, profile, saveProfile: persistProfile } = useCommitments();
+ const { state, profile, saveProfile: persistProfile, dataNotice } = useCommitments();
  const profileEvidence = state.evidence;
  const [tab, setTab] = useState<ProfileTab>('Overview');
  const { about, permissions } = profile;
@@ -34,7 +34,7 @@ export function ProfilePage() {
  async function saveProfile(next: AboutProfile) {
   setNotice('');
   if (!await persistProfile({ permissions, about: { ...next, interests: next.interests.filter(s => s.trim()), goals: next.goals.filter(s => s.trim()), skills: next.skills.filter(s => s.trim()), values: next.values.filter(s => s.trim()) } })) return;
-  setEditing(false); setNotice('Profile saved on this computer.');
+  setEditing(false); setNotice('Profile updated.');
  }
  function viewAs(next: AudienceType | 'me') {
   setAudience(next); setSelectedEvidence(null); setSelectedPattern(null); setNotice('');
@@ -58,7 +58,7 @@ export function ProfilePage() {
    {tab === 'About' && <ProfileAbout profile={about} showAbout={canSee('about')} showInterests={canSee('interests')} editable={audience === 'me'} onEdit={() => setEditing(true)}/>}
    {tab === 'Permissions' && <PermissionMatrix permissions={permissions} onToggle={toggle}/>}
   </div>
-  <footer className="page-footer"><span><span className="footer-dot"/> Your profile. Your context. Your choice.</span><span>Mock data · Saved on this computer</span></footer>
+  <footer className="page-footer"><span><span className="footer-dot"/> Your profile. Your context. Your choice.</span><span>{dataNotice}</span></footer>
  </main></div>
  {editing && <ProfileModal title="Edit Profile" onClose={() => setEditing(false)}><AboutEditor initial={about} onSave={saveProfile} onCancel={() => setEditing(false)}/></ProfileModal>}
  {currentEvidence && <EvidenceDetails key={currentEvidence.id} preview={audience !== 'me'} event={currentEvidence} onClose={() => setSelectedEvidence(null)}/>}

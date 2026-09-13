@@ -4,7 +4,7 @@ import { evidence as homeEvidence, patterns as homePatterns, wellbeing } from '.
 import type { AboutProfile, AudienceType, BehavioralPattern, EvidenceEvent, EvidenceKind, EvidenceSourceType, PermissionSettings, ProfileSection, ProfileTimelineEvent, WellbeingMetric } from '@/types/profile';
 
 export const initialAbout: AboutProfile = {
- name: 'Adithya', description: 'Curious. Building. Learning.',
+ name: 'Alex Morgan', description: 'Curious. Building. Learning.',
  about: 'I’m building meaningful products and making space for learning, connection, and everyday progress.',
  interests: ['Technology', 'AI', 'Travel', 'Fitness', 'Community'],
  goals: ['Build meaningful products', 'Continue learning', 'Maintain strong relationships', 'Contribute to community'],

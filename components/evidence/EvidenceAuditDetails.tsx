@@ -10,7 +10,7 @@ const actionLabels: Record<EvidenceCommand['action'], string> = {
  'dispute-resolved': 'Resolve dispute', corrected: 'Correct text', revoked: 'Revoke',
 };
 export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent; preview: boolean }) {
- const { dispatch, reliability, saving, error: persistenceError } = useCommitments();
+ const { dispatch, reliability, saving, error: persistenceError, dataNotice } = useCommitments();
  const [reason, setReason] = useState('');
  const [title, setTitle] = useState(event.title);
  const [description, setDescription] = useState(event.description);
@@ -29,7 +29,7 @@ export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent;
    const command: EvidenceCommand = action === 'verified' ? { action, source } : action === 'corrected' ? { action, changes: { title, description } } : { action };
    applyEvidenceCommand(event, command, context);
    if (!await dispatch({ type: 'evidence', id: event.id, command, context, at: context.at })) { setNotice('Save was not confirmed. Check the persistence error and reload before retrying.'); return; }
-   setNotice(`${actionLabels[action]} saved locally.`); setEditing(false); setReason('');
+   setNotice(`${actionLabels[action]} updated.`); setEditing(false); setReason('');
   } catch (error) { setNotice(error instanceof Error ? error.message : 'Unable to update evidence.'); }
  }
  return <section className="profile-detail">
@@ -44,7 +44,7 @@ export function EvidenceAuditDetails({ event, preview }: { event: EvidenceEvent;
    <dt>Why this exists</dt><dd>{event.type === 'commitment-outcome' ? 'Human Profile recorded a commitment outcome. This does not independently confirm the work.' : 'An activity or statement was recorded by the source above.'}</dd>
    <dt>Pattern</dt><dd>{event.relatedPattern ?? 'None'} · {contribution}</dd>
   </dl>
-  {!preview && <><h3>Audit history</h3><p>History is saved on this computer. Verification actions are mock demonstrations.</p><ol className="evidence-audit-list">{event.auditHistory.map(entry => <li key={entry.id}>
+  {!preview && <><h3>Audit history</h3><p>{dataNotice}. Verification actions are simulated.</p><ol className="evidence-audit-list">{event.auditHistory.map(entry => <li key={entry.id}>
    <strong>{entry.action}</strong> · <time dateTime={entry.timestamp}>{entry.timestamp}</time>
    <p>{entry.actor.source} ({entry.actor.type}){entry.actor.sourceId && ` · ${entry.actor.sourceId}`}{entry.actor.demo && ' · Demo'}</p>
    {entry.note && <p>{entry.note}</p>}

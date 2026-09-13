@@ -30,3 +30,6 @@ next-env.d.ts
 
 # Local backend runtime records, locks, and recoverable reset backups
 /.human-profile-data*
+
+# Vercel CLI project metadata and downloaded environment files
+/.vercel/

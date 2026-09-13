@@ -2,9 +2,12 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CommitmentAction } from '@/domain/commitments/pipeline';
 import type { ProfileState } from '@/application/repositories';
+import type { RuntimeMode } from '@/server/runtime-mode';
 import type { ProfileCommand, ProfileView } from '@/application/profile-service';
 
-interface CommitmentContextValue extends ProfileView {
+type RuntimeView = ProfileView & { mode: RuntimeMode };
+interface CommitmentContextValue extends RuntimeView {
+ dataNotice: string;
  saving: boolean;
  error: string;
  dispatch: (action: CommitmentAction) => Promise<boolean>;
@@ -13,7 +16,7 @@ interface CommitmentContextValue extends ProfileView {
 const CommitmentContext = createContext<CommitmentContextValue | null>(null);
 /** Server-confirmed snapshot shared by every route. Failed saves never update product state. */
 export function CommitmentProvider({ children }: { children: ReactNode }) {
- const [view, setView] = useState<ProfileView | null>(null);
+ const [view, setView] = useState<RuntimeView | null>(null);
  const [error, setError] = useState('');
  const [saving, setSaving] = useState(false);
  const busy = useRef(false);
@@ -24,9 +27,9 @@ export function CommitmentProvider({ children }: { children: ReactNode }) {
   try {
    const response = await fetch('/api/profile-state', { cache: 'no-store' });
    const result = await response.json();
-   if (!response.ok) throw new Error(result.error);
+   if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Unable to load the profile. Please try again.');
    if (generation.current === token) { setView(result); setError(''); }
-  } catch (cause) { if (generation.current === token) setError(cause instanceof Error ? cause.message : 'Unable to load. Retry.'); }
+  } catch (cause) { if (generation.current === token) setError(cause instanceof Error && !cause.message.includes('JSON') ? cause.message : 'Unable to load the profile. Please try again.'); }
  }, []);
  const invalidate = useCallback(() => { generation.current++; }, []);
  useEffect(() => {
@@ -42,20 +45,20 @@ export function CommitmentProvider({ children }: { children: ReactNode }) {
   try {
    const response = await fetch('/api/profile-state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(command) });
    const result = await response.json();
-   if (!response.ok) throw new Error(result.error);
+   if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Unable to load the profile. Please try again.');
    setView(result); return true;
   } catch (cause) {
-   setError(`${cause instanceof Error ? cause.message : 'Save failed.'} Reload saved data before retrying if the response was interrupted.`);
+   setError(`${cause instanceof Error && !cause.message.includes('JSON') ? cause.message : 'Unable to save. Please try again.'} Reload saved data before retrying if the response was interrupted.`);
    return false;
   } finally { busy.current = false; setSaving(false); }
  }
  return <>
   {error && <div className="profile-notice" role="alert">{error} <button className="profile-button" disabled={saving} onClick={() => void load()}>Reload saved data</button></div>}
   {saving && <div className="profile-notice" role="status">Saving…</div>}
-  {!view ? <p className="profile-notice" role="status">{error ? 'Local data is unavailable.' : 'Loading saved profile…'}</p> : <CommitmentContext.Provider value={{ ...view, saving, error,
+  {!view ? <p className="profile-notice" role="status">{error ? 'Profile is unavailable.' : 'Loading profile…'}</p> : <CommitmentContext.Provider value={{ ...view, saving, error, dataNotice: view.mode === 'public-demo' ? 'Simulated demo data · Changes may reset' : 'Saved on this computer',
    dispatch: action => action.type === 'refresh-clock' ? load().then(() => true) : save(action),
    saveProfile: profile => save({ type: 'profile', profile }),
-  }}>{children}</CommitmentContext.Provider>}
+  }}>{view.mode === 'public-demo' && <div className="public-demo-notice"><strong>Interactive Product Prototype</strong><span>Demo data is simulated. Changes may reset. Please use fictional information.</span></div>}{children}</CommitmentContext.Provider>}
  </>;
 }
 export function useCommitments() {

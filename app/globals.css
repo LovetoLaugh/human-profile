@@ -28,3 +28,14 @@
 .evidence-field { display: grid; gap: 6px; margin: 12px 0; }
 .evidence-field input, .evidence-field textarea { width: 100%; border: 1px solid #dce5e1; border-radius: 8px; padding: 10px; font: inherit; }
 .evidence-field textarea { min-height: 80px; }
+
+/* Public demo: concise context and existing neutral-green surfaces. */
+.public-demo-notice{margin-left:232px;padding:12px 30px;background:#eaf2ec;color:#355944;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;line-height:1.5;border-bottom:1px solid #d7e4da}
+.demo-introduction{padding:28px;margin-bottom:28px;max-width:100%;line-height:1.8}
+.demo-introduction h1{font-size:32px;margin-top:10px}.demo-introduction p{font-size:14px;max-width:780px;margin-top:10px;color:#496153}.demo-introduction .demo-tagline{color:#39775e;font-weight:600}.demo-introduction #how-it-works{border-top:1px solid var(--border);padding-top:20px;margin-top:24px;scroll-margin-top:20px}.demo-introduction small{display:block;margin-top:12px;color:#576f60;font-size:12px}.demo-introduction p a{text-decoration:underline;text-underline-offset:3px}
+.demo-introduction .profile-actions{margin-top:20px}.profile-actions{flex-wrap:wrap}.workspace, .main-column, .right-column{min-width:0}.evidence-card-heading strong{overflow-wrap:anywhere;min-width:0}select:focus-visible,textarea:focus-visible{outline:3px solid #76ab94;outline-offset:3px}
+@media(max-width:1200px){.public-demo-notice{margin-left:200px}}
+@media(max-width:700px){.public-demo-notice{margin-left:0;padding:12px 20px}}
+@media(max-width:700px){.demo-introduction{padding:20px}.demo-introduction h1{font-size:28px}.demo-introduction .profile-actions a{flex:1;text-align:center}.public-demo-notice{font-size:11px}.profile-detail{padding-inline:8px}.page-footer{flex-wrap:wrap;gap:8px}.evidence-card-heading{flex-wrap:wrap}.profile-tabs{overflow-x:auto}.profile-button{min-height:36px}}
+@media(max-width:960px){.public-demo-notice{margin-left:180px}}
+@media(max-width:700px){.public-demo-notice{margin-left:0}.sidebar{flex-wrap:wrap;gap:14px}.sidebar nav{display:flex;width:100%;gap:4px}.sidebar .nav-item{flex:1;width:auto;justify-content:center;padding:10px 6px;font-size:11px;gap:7px}.sidebar .nav-item:disabled{display:none}.sidebar .active-dot{display:none}}
