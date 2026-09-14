@@ -1,4 +1,5 @@
 'use client';
+import { DemoIntroduction } from '@/components/DemoIntroduction';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CommitmentAction } from '@/domain/commitments/pipeline';
 import type { ProfileState } from '@/application/repositories';
@@ -55,10 +56,10 @@ export function CommitmentProvider({ children }: { children: ReactNode }) {
  return <>
   {error && <div className="profile-notice" role="alert">{error} <button className="profile-button" disabled={saving} onClick={() => void load()}>Reload saved data</button></div>}
   {saving && <div className="profile-notice" role="status">Saving…</div>}
-  {!view ? <p className="profile-notice" role="status">{error ? 'Profile is unavailable.' : 'Loading profile…'}</p> : <CommitmentContext.Provider value={{ ...view, saving, error, dataNotice: view.mode === 'public-demo' ? 'Simulated demo data · Changes may reset' : 'Saved on this computer',
+  {!view ? <main className="profile-loading-shell"><DemoIntroduction /><section aria-label="Profile preparation" aria-busy={!error}><p role="status">{error ? 'Your profile is unavailable. Use the reload control to try again.' : 'Preparing your profile…'}</p><div className="profile-skeleton" aria-hidden="true"><div className="card" /><div className="card" /><div className="card" /></div></section></main> : <CommitmentContext.Provider value={{ ...view, saving, error, dataNotice: view.mode === 'public-demo' ? 'Simulated demo data · Changes may reset' : 'Saved on this computer',
    dispatch: action => action.type === 'refresh-clock' ? load().then(() => true) : save(action),
    saveProfile: profile => save({ type: 'profile', profile }),
-  }}>{view.mode === 'public-demo' && <div className="public-demo-notice"><strong>Interactive Product Prototype</strong><span>Demo data is simulated. Changes may reset. Please use fictional information.</span></div>}{children}</CommitmentContext.Provider>}
+  }}>{view.mode === 'public-demo' && <div className="public-demo-notice"><strong>Interactive Product Prototype</strong><span>Fictional data · Temporary isolated state · Simulated verification · No real health or wearable integrations.</span></div>}{children}</CommitmentContext.Provider>}
  </>;
 }
 export function useCommitments() {

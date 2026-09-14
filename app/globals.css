@@ -39,3 +39,13 @@
 @media(max-width:700px){.demo-introduction{padding:20px}.demo-introduction h1{font-size:28px}.demo-introduction .profile-actions a{flex:1;text-align:center}.public-demo-notice{font-size:11px}.profile-detail{padding-inline:8px}.page-footer{flex-wrap:wrap;gap:8px}.evidence-card-heading{flex-wrap:wrap}.profile-tabs{overflow-x:auto}.profile-button{min-height:36px}}
 @media(max-width:960px){.public-demo-notice{margin-left:180px}}
 @media(max-width:700px){.public-demo-notice{margin-left:0}.sidebar{flex-wrap:wrap;gap:14px}.sidebar nav{display:flex;width:100%;gap:4px}.sidebar .nav-item{flex:1;width:auto;justify-content:center;padding:10px 6px;font-size:11px;gap:7px}.sidebar .nav-item:disabled{display:none}.sidebar .active-dot{display:none}}
+
+/* Initial HTML uses the same introduction as the loaded dashboard. */
+.profile-loading-shell{max-width:1100px;padding:32px 24px;min-height:100vh}
+.profile-loading-shell>section>p{color:#496153;line-height:1.7}
+.profile-skeleton{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:18px}
+.profile-skeleton>.card{height:140px;background:linear-gradient(110deg,#edf2ec,#f9faf8)}
+@media(max-width:700px){.profile-loading-shell{padding:20px 18px}.profile-skeleton{grid-template-columns:1fr}.profile-skeleton>.card{height:80px}}
+
+.dashboard-greeting{font-size:29px;letter-spacing:-1px;font-weight:500}
+@media(max-width:700px){.dashboard-greeting{font-size:26px}}

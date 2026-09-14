@@ -1,4 +1,5 @@
 'use client';
+import { DemoIntroduction } from '@/components/DemoIntroduction';
 import { patternWithEvidence } from '@/domain/patterns/evidence-profile';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -55,6 +56,7 @@ export function Dashboard() {
  const [perspective,setPerspective]=useState<ProfilePerspective>('Me');
  const { state, dispatch, reliability, mode, dataNotice } = useCommitments();
  const [selectedPattern,setSelectedPattern]=useState<BehavioralPattern|null>(null);
+ const GreetingHeading = mode === 'public-demo' ? 'h2' : 'h1';
  const privateView=perspective==='Me';
  const visiblePatterns=[reliability.pattern, ...patterns.map(p => patternWithEvidence(p, state.evidence))].filter(p=>isShared(p,perspective));
  const visibleEvidence=state.evidence.filter(e=>isShared(e,perspective));
@@ -64,8 +66,8 @@ export function Dashboard() {
  return <div className="app-shell">
   <a className="skip-link" href="#main-content">Skip to dashboard</a><Sidebar/>
   <div className="workspace"><TopBar/><main id="main-content">
-   {mode === 'public-demo' && <section className="card demo-introduction"><span className="eyebrow">INTERACTIVE PRODUCT PROTOTYPE</span><h1>Human Profile</h1><p className="demo-tagline">People. Context. Trust.</p><p>A platform for understanding human context through evidence, patterns, and purpose-based sharing.</p><p>Go beyond a static bio: see current context alongside patterns supported by inspectable evidence.</p><div className="profile-actions"><Link className="profile-button primary" href="/profile">Explore Demo Profile</Link><a className="profile-button" href="#how-it-works">How It Works</a></div><div id="how-it-works"><h2>Actions become context</h2><p>Commitment → Outcome → Evidence → Pattern → Profile</p><p><strong>Try this:</strong> <Link href="/commitments">Create a commitment</Link>, complete or miss it, then open its evidence to inspect provenance and audit history. In <Link href="/profile">My Profile</Link>, try View As and the Permissions tab.</p><small>Profile information, health signals, and reference confirmations are fictional. Demo dates use a simulated September 2026 timeline.</small></div></section>}
-   <div className="page-heading"><div><div className="eyebrow greeting-eyebrow">YOUR LIFE, IN CONTEXT</div><h1>Good evening, {user.firstName} <span className="greeting-sun">☀</span></h1><p>Here’s your current state and what matters most.</p></div><span className="date-label"><span/> Wednesday, September 9 <span className="demo-badge">Demo</span></span></div>
+   {mode === 'public-demo' && <DemoIntroduction />}
+   <div className="page-heading"><div><div className="eyebrow greeting-eyebrow">YOUR LIFE, IN CONTEXT</div><GreetingHeading className="dashboard-greeting">Good evening, {user.firstName} <span className="greeting-sun">☀</span></GreetingHeading><p>Here’s your current state and what matters most.</p></div><span className="date-label"><span/> Wednesday, September 9 <span className="demo-badge">Demo</span></span></div>
    <ProfilePerspectiveSelector value={perspective} onChange={changePerspective}/>
    {!privateView&&<div className="preview-banner" role="status"><Icon name="shield" size={18}/><span>Previewing what {perspective==='Employer'?'an':'a'} <strong>{perspective}</strong> can see</span><button onClick={()=>changePerspective('Me')}>Back to my view</button></div>}
    <div className="dashboard-grid"><div className="main-column">
