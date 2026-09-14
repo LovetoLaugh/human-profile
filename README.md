@@ -4,6 +4,23 @@
 
 Human Profile is an experimental platform exploring how people can represent more than static identity information: current context, well-being signals, commitments, behavioral evidence, longer-term observed patterns, and purpose-based sharing.
 
+## Live Demo
+
+🌐 **[Explore Human Profile](https://human-profile.vercel.app/)**
+
+Human Profile is an interactive prototype for modeling human context through evidence, behavioral patterns, and purpose-based sharing.
+
+The public demo uses fictional data and temporary session state. No real health, wearable, reference, or external verification data is used.
+
+### Demo Highlights
+
+- Commitment → Outcome → Evidence → Pattern → Profile pipeline
+- Auditable Evidence v2 with provenance, disputes, corrections, and revocation
+- Derived reliability patterns
+- Purpose-based profile views and permissions
+- Event-oriented domain architecture
+- Public demo mode with isolated temporary visitor state
+
 It does **not** determine whether someone is a “good” or “bad” person. It separates self-reported information, observed actions, independently verified information, and derived patterns—and makes the evidence behind patterns inspectable. Today, it is a local prototype with mock profile data and a working commitment-to-evidence pipeline.
 
 Current state describes temporary context, such as today’s self-reported well-being. Long-term patterns summarize observations over time; a temporary state or isolated outcome must not become a permanent conclusion about a person. Human Profile models human context, evidence, and behavioral patterns, not whether someone is honest/dishonest or trustworthy/untrustworthy.
