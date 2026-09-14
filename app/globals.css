@@ -49,3 +49,10 @@
 
 .dashboard-greeting{font-size:29px;letter-spacing:-1px;font-weight:500}
 @media(max-width:700px){.dashboard-greeting{font-size:26px}}
+
+/* Server-owned Home intro stays outside the profile data loading gate. */
+.home-introduction{margin-left:232px;padding:35px 38px 0}
+.home-introduction .demo-introduction{margin-bottom:0}
+@media(max-width:1200px){.home-introduction{margin-left:200px}}
+@media(max-width:960px){.home-introduction{margin-left:180px}}
+@media(max-width:700px){.home-introduction{margin-left:0;padding:20px 18px 0}}

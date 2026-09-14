@@ -1,5 +1,4 @@
 'use client';
-import { DemoIntroduction } from '@/components/DemoIntroduction';
 import { patternWithEvidence } from '@/domain/patterns/evidence-profile';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -54,9 +53,8 @@ export function EvidenceFeed({items}:{items:EvidenceEvent[]}) {
 }
 export function Dashboard() {
  const [perspective,setPerspective]=useState<ProfilePerspective>('Me');
- const { state, dispatch, reliability, mode, dataNotice } = useCommitments();
+ const { state, dispatch, reliability, dataNotice } = useCommitments();
  const [selectedPattern,setSelectedPattern]=useState<BehavioralPattern|null>(null);
- const GreetingHeading = mode === 'public-demo' ? 'h2' : 'h1';
  const privateView=perspective==='Me';
  const visiblePatterns=[reliability.pattern, ...patterns.map(p => patternWithEvidence(p, state.evidence))].filter(p=>isShared(p,perspective));
  const visibleEvidence=state.evidence.filter(e=>isShared(e,perspective));
@@ -66,8 +64,7 @@ export function Dashboard() {
  return <div className="app-shell">
   <a className="skip-link" href="#main-content">Skip to dashboard</a><Sidebar/>
   <div className="workspace"><TopBar/><main id="main-content">
-   {mode === 'public-demo' && <DemoIntroduction />}
-   <div className="page-heading"><div><div className="eyebrow greeting-eyebrow">YOUR LIFE, IN CONTEXT</div><GreetingHeading className="dashboard-greeting">Good evening, {user.firstName} <span className="greeting-sun">☀</span></GreetingHeading><p>Here’s your current state and what matters most.</p></div><span className="date-label"><span/> Wednesday, September 9 <span className="demo-badge">Demo</span></span></div>
+   <div className="page-heading"><div><div className="eyebrow greeting-eyebrow">YOUR LIFE, IN CONTEXT</div><h2 className="dashboard-greeting">Good evening, {user.firstName} <span className="greeting-sun">☀</span></h2><p>Here’s your current state and what matters most.</p></div><span className="date-label"><span/> Wednesday, September 9 <span className="demo-badge">Demo</span></span></div>
    <ProfilePerspectiveSelector value={perspective} onChange={changePerspective}/>
    {!privateView&&<div className="preview-banner" role="status"><Icon name="shield" size={18}/><span>Previewing what {perspective==='Employer'?'an':'a'} <strong>{perspective}</strong> can see</span><button onClick={()=>changePerspective('Me')}>Back to my view</button></div>}
    <div className="dashboard-grid"><div className="main-column">
