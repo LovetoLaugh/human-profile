@@ -162,3 +162,15 @@ test('application and domain have no direct Clerk or Next.js dependencies', () =
   assert.doesNotMatch(source, /(?:from\s*|import\s*\(|require\s*\()\s*['"](?:@clerk\/|next(?:\/|['"]))/);
  }
 });
+
+test('local server origins match Next middleware normalization for Clerk same-page rewrites', () => {
+ const { NextRequest } = require('next/server');
+ const { scripts } = require('../package.json');
+ for (const name of ['dev', 'start']) {
+  const host = scripts[name].match(/--hostname\s+(\S+)/)?.[1];
+  assert.ok(host, `${name} must explicitly bind to loopback`);
+  assert.equal(host, 'localhost');
+  const url = `http://${host}:3000/sign-in`;
+  assert.equal(new NextRequest(url).url, url, 'Clerk self-rewrite must stay on the Next server origin');
+ }
+});
