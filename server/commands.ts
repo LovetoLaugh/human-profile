@@ -16,7 +16,7 @@ function strings(value: unknown): string[] {
  if (!Array.isArray(value) || value.length > 100) throw new RequestError('Invalid list.');
  return value.map(v => string(v));
 }
-export function parseCommand(value: unknown): ProfileCommand {
+export function parseCommand(value: unknown, experience: 'demo' | 'owner' = 'demo'): ProfileCommand {
  const body = object(value);
  if (body.type === 'profile') {
   const profile = object(body.profile), about = object(profile.about), permissions = object(profile.permissions);
@@ -43,7 +43,7 @@ export function parseCommand(value: unknown): ProfileCommand {
   const command = object(body.command), suppliedContext = object(body.context);
   const note = suppliedContext.note === undefined ? undefined : string(suppliedContext.note);
   const source = { type: 'external-source' as const, source: 'Independent reviewer (mock)', sourceId: 'demo-reviewer', demo: true };
-  const context = { id: randomUUID(), at, note, actor: command.action === 'verified' ? source : { type: 'user' as const, source: 'Profile owner (demo)', demo: true } };
+  const context = { id: randomUUID(), at, note, actor: command.action === 'verified' ? source : { type: 'user' as const, source: experience === 'demo' ? 'Profile owner (demo)' : 'Profile owner', demo: experience === 'demo' } };
   if (command.action === 'verified') return { type: 'evidence', id, at, context, command: { action: 'verified', source } };
   if (command.action === 'corrected') {
    const changes = object(command.changes);

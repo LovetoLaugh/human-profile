@@ -1,5 +1,7 @@
 # Backend v1: local durable documents
 
+This document describes the original development/demo backend. [Authentication & Profile Ownership v1](authentication-v1.md) adds the separate Clerk-protected `/me` and `/api/me/profile-state` path, empty owner initialization, and distinct owner storage without changing the demo repository.
+
 The UI calls `GET`/`POST /api/profile-state`. Route handlers resolve the centralized development identity and parse commands. `ProfileService` reads repositories, invokes the existing domain reducer, saves changed records, and rebuilds the reliability read model. Domain code imports no storage or framework APIs. Evidence generation and audit transitions retain their existing semantics.
 
 ## Repository contract
@@ -36,7 +38,7 @@ The app binds to loopback. Host/Origin validation rejects foreign origins, but t
 
 The future DynamoDB adapter can use `PK = USER#<userId>` and `SK = PROFILE`, `COMMITMENT#<id>`, `EVIDENCE#<id>`. It must preserve atomic outcome/evidence writes, user isolation, and append-oriented audit semantics, using appropriate conditional writes and transactions. Embedded audit arrays may need separate records as they grow. DynamoDB is not implemented.
 
-This is event-oriented persistence, not full event sourcing. Forms produce commands; domain transitions generate evidence and audit entries. Kafka, consumers, wearables, authentication, external verification APIs, and production deployment are not implemented.
+This is event-oriented persistence, not full event sourcing. Forms produce commands; domain transitions generate evidence and audit entries. Kafka, consumers, wearables, external verification APIs, and durable production persistence are not implemented. The public demo is deployed on Vercel; authentication now exists on the separate private owner path described above.
 
 ## Validation
 

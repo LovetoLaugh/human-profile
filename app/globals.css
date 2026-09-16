@@ -56,3 +56,11 @@
 @media(max-width:1200px){.home-introduction{margin-left:200px}}
 @media(max-width:960px){.home-introduction{margin-left:180px}}
 @media(max-width:700px){.home-introduction{margin-left:0;padding:20px 18px 0}}
+
+/* Account routes reuse the prototype's cards, forms and neutral palette. */
+.account-shell,.owner-profile{max-width:1100px;margin:0 auto;padding:32px 24px}
+.owner-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;background:white;border-bottom:1px solid var(--border)}
+.owner-profile>section{margin-bottom:24px}
+.owner-profile .profile-header h1{margin-top:10px}
+.owner-profile .profile-header p{margin-top:12px;line-height:1.8}
+@media(max-width:700px){.account-shell,.owner-profile{padding:20px 18px}}

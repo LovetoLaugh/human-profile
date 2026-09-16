@@ -15,7 +15,7 @@ function loadTypeScript(relativePath) {
   const source = fs.readFileSync(filename, 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   vm.runInNewContext(code, {
-    exports: module.exports, module, Date, structuredClone, setTimeout, URL,
+    exports: module.exports, module, Date, structuredClone, setTimeout, URL, Request, Response,
     require: id => {
       if (id.startsWith('node:')) return require(id);
       const resolved = id.startsWith('@/') ? path.join(root, id.slice(2)) : path.resolve(path.dirname(filename), id);

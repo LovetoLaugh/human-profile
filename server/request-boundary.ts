@@ -18,3 +18,9 @@ export function assertDemoRequest(request: Request) {
  const origin = request.headers.get('origin');
  if ((request.method !== 'GET' && !origin) || (origin && origin !== expected)) throw new RequestError('Please use the demo from its own website.');
 }
+
+/** Private owner requests retain origin checks in addition to session authentication. */
+export function assertOwnerRequest(request: Request) {
+ assertDemoRequest(request);
+ if (request.headers.get('sec-fetch-site') === 'cross-site') throw new RequestError('Cross-site requests are not allowed.');
+}

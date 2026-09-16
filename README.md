@@ -17,6 +17,14 @@ The public demo uses fictional data and temporary isolated state. No real health
 
 Human Profile is currently a public interactive prototype. Local development uses durable file-backed persistence, while the public Vercel demo uses isolated temporary state.
 
+## Authentication & Profile Ownership v1
+
+The public demo remains anonymous. **Continue with Google** opens Clerk sign-in; authenticated users enter **`/me`**, a separate private profile that starts empty. Google must be enabled in Clerk before sign-in is available. Missing credentials leave the recruiter demo working.
+
+Clerk verifies the session at the server boundary and maps its stable user ID to Human Profile's `AuthenticatedIdentity.subject`. Email and browser-supplied owner IDs never determine ownership. Private API operations use only the server-derived owner partition; domain/application layers do not import Clerk.
+
+Private storage is **development-only**: local files on your machine, or separate temporary owner memory on Vercel. This is not durable production persistence. Demo data is never promoted into a private account. See [authentication setup, security boundaries, and exact Clerk/Google/Vercel steps](docs/authentication-v1.md), and copy the blank variable names from [.env.example](.env.example) into an ignored local environment file.
+
 ## Architecture at a Glance
 
 ```mermaid
@@ -144,15 +152,17 @@ See [pipeline design and assumptions](docs/commitment-pipeline.md). The earlier 
 
 ## Testing
 
-**84 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
+**98 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
 
 Backend tests additionally cover repository round trips, user isolation, reloads, seed/reset behavior, concurrent writes, atomic failure handling, authoritative request parsing, and persisted Evidence v2 eligibility. They use isolated temporary directories, never your runtime file. Public-demo tests cover environment selection, deterministic initialization, visitor isolation, temporary-state lifecycle and limits, cookie identity, and request boundaries.
+
+Authentication tests cover anonymous access, server-derived ownership, missing sessions, owner spoofing, cross-user isolation, empty initialization, private storage, framework boundaries, and the initial Home HTML.
 
 Run `npm test`. Tests use Node’s built-in runner and the existing TypeScript compiler, without an additional test framework.
 
 ## Tech Stack
 
-Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, ESLint, and Node’s built-in test runner.
+Next.js 15 (App Router), React 19, TypeScript, Clerk 7 (Google authentication), Tailwind CSS 4, ESLint, and Node’s built-in test runner.
 
 ## AI-Assisted Development
 
@@ -162,7 +172,7 @@ AI is used to accelerate implementation, refactoring, testing and iteration. Pro
 
 ## Runtime Modes
 
-The application and domain services share repository contracts across modes; storage and identity selection happen on the server.
+The application and domain services share repository contracts across modes; storage and identity selection happen on the server. The table below describes the existing public demo. Private `/me` uses separate owner storage as documented above.
 
 ```mermaid
 flowchart LR
@@ -178,9 +188,9 @@ flowchart LR
 | --- | --- | --- |
 | **Local development** | File-backed JSON; centralized development user | Survives navigation, refresh, and server restart |
 | **Public Vercel demo** | Temporary in-memory repository; isolated anonymous visitor session | Non-durable; may reset across requests, instances, expiry, or eviction |
-| **Future production** | DynamoDB-compatible persistence with production authentication | Planned; no DynamoDB adapter or production authentication exists today |
+| **Future production** | DynamoDB-compatible persistence behind the authenticated owner boundary | Planned; no DynamoDB adapter exists today |
 
-`server/runtime-mode.ts` defaults to local mode outside Vercel. `HUMAN_PROFILE_MODE=public-demo` enables demo mode explicitly; `VERCEL=1` always selects demo mode, even if a local override was configured. No secrets or client-side environment variables are required. `HUMAN_PROFILE_DATA_DIR` applies only to local storage and is ignored by public demo selection.
+`server/runtime-mode.ts` defaults to local mode outside Vercel. `HUMAN_PROFILE_MODE=public-demo` enables demo mode explicitly; `VERCEL=1` always selects demo mode, even if a local override was configured. No secrets or client-side environment variables are required for the public demo; private sign-in requires the Clerk configuration above. `HUMAN_PROFILE_DATA_DIR` applies only to local storage and is ignored by public demo selection.
 
 ### Public demo behavior
 
@@ -228,7 +238,7 @@ Forms remain event producers through domain transitions and evidence. Wearables 
 
 ## Roadmap — Future Work
 
-- Production DynamoDB adapter and authentication.
+- Production DynamoDB adapter behind the implemented Clerk owner boundary, plus production operational controls.
 - Commitment outcome/date revisions, reversal workflows, and production evidence audit/dispute operations. Evidence provenance, verification status, text corrections, disputes, and audit history are already implemented.
 - External verification and wearable integrations.
 - Kafka-based event ingestion when justified.
@@ -237,7 +247,7 @@ Forms remain event producers through domain transitions and evidence. Wearables 
 
 ## Privacy / Responsible Design
 
-The design prioritizes user control, purpose-specific sharing, evidence provenance, explainable patterns, and avoiding opaque character scoring. This public interactive prototype uses fictional data. The API returns the current local user’s or demo visitor’s full snapshot; UI audience previews are not a security boundary. Sample fixtures also remain in the client bundle for illustrative sections. There is no authentication, real sharing, or connected health/financial data.
+The design prioritizes user control, purpose-specific sharing, evidence provenance, explainable patterns, and avoiding opaque character scoring. This public interactive prototype uses fictional data. The API returns the current local user’s or demo visitor’s full snapshot; UI audience previews are not a security boundary. Sample fixtures also remain in the client bundle for illustrative sections. The demo remains unauthenticated. Private `/me` requires Clerk authentication and exposes only the authenticated owner’s records. Real sharing and connected health/financial data are not implemented.
 
 ## Local Development
 
@@ -259,4 +269,4 @@ Stop the dev server before building; both use `.next/`. Keep credentials, `.env`
 
 ## Project Status
 
-**Public interactive prototype / experimental product.** The live demo, commitment pipeline, and durable local and temporary public repository modes are implemented; production DynamoDB, external verification, and production access controls are future work.
+**Public interactive prototype / experimental product.** The live demo, commitment pipeline, and durable local and temporary public repository modes are implemented, along with Clerk authentication and private owner isolation. Durable production persistence, external verification, and multi-user authorization remain future work.

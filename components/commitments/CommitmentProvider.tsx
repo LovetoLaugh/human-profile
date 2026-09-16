@@ -5,7 +5,7 @@ import type { ProfileState } from '@/application/repositories';
 import type { RuntimeMode } from '@/server/runtime-mode';
 import type { ProfileCommand, ProfileView } from '@/application/profile-service';
 
-type RuntimeView = ProfileView & { mode: RuntimeMode };
+type RuntimeView = ProfileView & { mode: RuntimeMode | 'owner-local' | 'owner-temporary' };
 interface CommitmentContextValue extends RuntimeView {
  dataNotice: string;
  saving: boolean;
@@ -16,7 +16,8 @@ interface CommitmentContextValue extends RuntimeView {
 const LoadingErrorContext = createContext('');
 const CommitmentContext = createContext<CommitmentContextValue | null>(null);
 /** Server-confirmed snapshot shared by every route. Failed saves never update product state. */
-export function CommitmentProvider({ children }: { children: ReactNode }) {
+export function CommitmentProvider({ children, experience = 'demo' }: { children: ReactNode; experience?: 'demo' | 'owner' }) {
+ const endpoint = experience === 'owner' ? '/api/me/profile-state' : '/api/profile-state';
  const [view, setView] = useState<RuntimeView | null>(null);
  const [error, setError] = useState('');
  const [saving, setSaving] = useState(false);
@@ -26,12 +27,13 @@ export function CommitmentProvider({ children }: { children: ReactNode }) {
   if (busy.current) return;
   const token = ++generation.current;
   try {
-   const response = await fetch('/api/profile-state', { cache: 'no-store' });
+   const response = await fetch(endpoint, { cache: 'no-store' });
    const result = await response.json();
+   if (experience === 'owner' && (response.status === 401 || response.status === 403)) setView(null);
    if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Unable to load the profile. Please try again.');
    if (generation.current === token) { setView(result); setError(''); }
   } catch (cause) { if (generation.current === token) setError(cause instanceof Error && !cause.message.includes('JSON') ? cause.message : 'Unable to load the profile. Please try again.'); }
- }, []);
+ }, [endpoint, experience]);
  const invalidate = useCallback(() => { generation.current++; }, []);
  useEffect(() => {
   void load();
@@ -44,8 +46,9 @@ export function CommitmentProvider({ children }: { children: ReactNode }) {
   if (busy.current) return false;
   busy.current = true; generation.current++; setSaving(true); setError('');
   try {
-   const response = await fetch('/api/profile-state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(command) });
+   const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(command) });
    const result = await response.json();
+   if (experience === 'owner' && (response.status === 401 || response.status === 403)) setView(null);
    if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Unable to load the profile. Please try again.');
    setView(result); return true;
   } catch (cause) {
@@ -56,7 +59,7 @@ export function CommitmentProvider({ children }: { children: ReactNode }) {
  return <>
   {error && <div className="profile-notice" role="alert">{error} <button className="profile-button" disabled={saving} onClick={() => void load()}>Reload saved data</button></div>}
   {saving && <div className="profile-notice" role="status">Saving…</div>}
-  <LoadingErrorContext.Provider value={error}><CommitmentContext.Provider value={view ? { ...view, saving, error, dataNotice: view.mode === 'public-demo' ? 'Simulated demo data · Changes may reset' : 'Saved on this computer',
+  <LoadingErrorContext.Provider value={error}><CommitmentContext.Provider value={view ? { ...view, saving, error, dataNotice: experience === 'owner' ? view.mode === 'owner-temporary' ? 'Temporary private profile · Changes may reset' : 'Private profile · Saved on this computer' : view.mode === 'public-demo' ? 'Simulated demo data · Changes may reset' : 'Saved on this computer',
    dispatch: action => action.type === 'refresh-clock' ? load().then(() => true) : save(action),
    saveProfile: profile => save({ type: 'profile', profile }),
   } : null}>{children}</CommitmentContext.Provider></LoadingErrorContext.Provider>
@@ -69,9 +72,9 @@ export function useCommitments() {
 }
 
 /** Gate data-dependent screens only; server page content always renders. */
-export function ProfileDataBoundary({ children }: { children: ReactNode }) {
+export function ProfileDataBoundary({ children, experience = 'demo' }: { children: ReactNode; experience?: 'demo' | 'owner' }) {
  const view = useContext(CommitmentContext);
  const error = useContext(LoadingErrorContext);
  if (!view) return <main className="profile-loading-shell"><section aria-label="Profile preparation" aria-busy={!error}><p role="status">{error ? 'Your profile is unavailable. Use the reload control to try again.' : 'Preparing your profile…'}</p><div className="profile-skeleton" aria-hidden="true"><div className="card" /><div className="card" /><div className="card" /></div></section></main>;
- return <>{view.mode === 'public-demo' && <div className="public-demo-notice"><strong>Interactive Product Prototype</strong><span>Fictional data · Temporary isolated state · Simulated verification · No real health or wearable integrations.</span></div>}{children}</>;
+ return <>{experience === 'demo' && view.mode === 'public-demo' && <div className="public-demo-notice"><strong>Interactive Product Prototype</strong><span>Fictional data · Temporary isolated state · Simulated verification · No real health or wearable integrations.</span></div>}{children}</>;
 }

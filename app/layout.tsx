@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { CommitmentProvider } from '@/components/commitments/CommitmentProvider';
+import { ApplicationProviders } from '@/components/ApplicationProviders';
 const title = 'Human Profile — People. Context. Trust.';
 const socialDescription = 'Explore an evidence-driven approach to human context, behavioral patterns, and purpose-based sharing.';
 export const metadata: Metadata = {
@@ -14,4 +14,4 @@ export const metadata: Metadata = {
  icons: { icon: '/icon.svg' },
  manifest: '/manifest.json',
 };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body><CommitmentProvider>{children}</CommitmentProvider></body></html>; }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body><ApplicationProviders>{children}</ApplicationProviders></body></html>; }
