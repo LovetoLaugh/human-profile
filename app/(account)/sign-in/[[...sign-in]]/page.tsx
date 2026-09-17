@@ -13,7 +13,7 @@ export default async function SignInPage() {
  return <main className="account-shell"><section className="card demo-introduction">
   <h1>Human Profile</h1><p className="demo-tagline">People. Context. Trust.</p>
   <h2>Continue with Google</h2><p>Your private profile starts empty, separate from the fictional demo.</p>
-  <p>Authentication v1 uses development storage. Hosted private data is temporary and may reset; avoid sensitive information.</p>
+  <p>Your profile shows the active storage mode after sign-in. Local development uses files; production requires durable private storage.</p>
   <div className="profile-actions"><Link className="profile-button" href="/">Explore the public demo</Link></div>
  </section>{configured ? <SignIn routing="path" path="/sign-in" forceRedirectUrl="/me" signUpForceRedirectUrl="/me" /> : <section className="card demo-introduction"><h2>Sign-in is not configured yet</h2><p>The public demo remains available. The site owner needs to configure Clerk and enable Google sign-in.</p></section>}</main>;
 }

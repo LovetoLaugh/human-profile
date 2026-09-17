@@ -23,7 +23,7 @@ The public demo remains anonymous. **Continue with Google** opens Clerk sign-in;
 
 Clerk verifies the session at the server boundary and maps its stable user ID to Human Profile's `AuthenticatedIdentity.subject`. Email and browser-supplied owner IDs never determine ownership. Private API operations use only the server-derived owner partition; domain/application layers do not import Clerk.
 
-Private storage is **development-only**: local files on your machine, or separate temporary owner memory on Vercel. This is not durable production persistence. Demo data is never promoted into a private account. See [authentication setup, security boundaries, and exact Clerk/Google/Vercel steps](docs/authentication-v1.md), and copy the blank variable names from [.env.example](.env.example) into an ignored local environment file.
+Private storage uses local files during development and DynamoDB in production. Production requires manual AWS configuration and fails clearly without it; there is no temporary private fallback. See [DynamoDB setup and limitations](docs/dynamodb-persistence-v1.md). Demo data is never promoted into a private account. See [authentication setup, security boundaries, and exact Clerk/Google/Vercel steps](docs/authentication-v1.md), and copy the blank variable names from [.env.example](.env.example) into an ignored local environment file.
 
 ## Architecture at a Glance
 
@@ -73,7 +73,7 @@ Commitment outcomes update Home and My Profile through a shared server-confirmed
 
 ### Mocked or unavailable today
 
-Most well-being signals, health information, work history, family information, references, and external verification are prototype data. Wearable data is not connected to a real integration. These screens and sample confirmations do not represent real integrations. Production database infrastructure remains future work.
+Most well-being signals, health information, work history, family information, references, and external verification are prototype data. Wearable data is not connected to a real integration. These screens and sample confirmations do not represent real integrations. The private DynamoDB adapter is implemented; AWS table/IAM provisioning remains a manual deployment step.
 
 ## Commitments + Evidence Pipeline
 
@@ -134,7 +134,7 @@ Corrections currently cover evidence title/description; commitment outcome/date 
 | `components/commitments/CommitmentProvider.tsx` | Loads server snapshots; publishes only confirmed saves; loading/error/reload controls |
 | `app/api/profile-state/`, `server/` | Node route handlers, validation, runtime mode, development identity, and anonymous demo sessions |
 | `application/` | Repository contracts and workflow orchestration |
-| `persistence/` | Atomic local file adapter, bounded public demo repository, and memory test adapter |
+| `persistence/` | Atomic local file adapter, transactional private DynamoDB adapter, bounded public demo repository, and memory test adapter |
 | `data/`, `data/mocks/` | Mock profile records and deterministic commitment fixtures |
 | `tests/` | Domain, profile-data, backend, and public-demo tests |
 
@@ -145,16 +145,18 @@ See [pipeline design and assumptions](docs/commitment-pipeline.md). The earlier 
 - **Next.js App Router + TypeScript:** shared route state with loading, error, and confirmed-save behavior.
 - **Domain logic outside React:** deterministic commitment/evidence transitions and explainable derived patterns; UI components do not calculate reliability.
 - **Application service orchestration:** existing domain services run inside user-scoped repository transactions.
-- **Non-relational repository architecture:** environment-aware selection between atomic local document persistence and isolated temporary public-demo memory.
+- **Non-relational repository architecture:** environment-aware selection between local files, transactional private DynamoDB persistence, and isolated temporary public-demo memory.
 - **Evidence v2 audit model:** append-oriented history preserves meaningful transitions, provenance, and corrections. This is event-oriented design, not full event sourcing.
 - **Purpose-based visibility:** aggregate patterns and individual evidence have separate preview controls. Home and My Profile retain distinct audience rules.
 - **Automated tests and a Vercel public demo:** repository isolation, workflow invariants, and error handling are exercised alongside the domain model.
 
 ## Testing
 
-**99 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
+**120 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
 
 Backend tests additionally cover repository round trips, user isolation, reloads, seed/reset behavior, concurrent writes, atomic failure handling, authoritative request parsing, and persisted Evidence v2 eligibility. They use isolated temporary directories, never your runtime file. Public-demo tests cover environment selection, deterministic initialization, visitor isolation, temporary-state lifecycle and limits, cookie identity, and request boundaries.
+
+DynamoDB tests use an injected mock client, without credentials: pagination, serialization, atomic failures, revision conflicts, ambiguous responses, owner isolation, size limits, and configuration selection are covered. Live AWS persistence has not been verified.
 
 Authentication tests cover anonymous access, server-derived ownership, missing sessions, owner spoofing, cross-user isolation, empty initialization, private storage, framework boundaries, and the initial Home HTML.
 
@@ -172,7 +174,7 @@ AI is used to accelerate implementation, refactoring, testing and iteration. Pro
 
 ## Runtime Modes
 
-The application and domain services share repository contracts across modes; storage and identity selection happen on the server. The table below describes the existing public demo. Private `/me` uses separate owner storage as documented above.
+The application and domain services share repository contracts across modes; storage and identity selection happen on the server. Private `/me` uses separate owner storage; demo runtime selection is unchanged.
 
 ```mermaid
 flowchart LR
@@ -181,14 +183,14 @@ flowchart LR
     C --> D[Repository Interfaces]
     D --> E[Local: file-backed repository]
     D --> F[Vercel demo: temporary repository]
-    D -.-> G[Future production: DynamoDB-compatible persistence]
+    D --> G[Private production: DynamoDB]
 ```
 
 | Mode | Repository and identity | State lifetime |
 | --- | --- | --- |
 | **Local development** | File-backed JSON; centralized development user | Survives navigation, refresh, and server restart |
 | **Public Vercel demo** | Temporary in-memory repository; isolated anonymous visitor session | Non-durable; may reset across requests, instances, expiry, or eviction |
-| **Future production** | DynamoDB-compatible persistence behind the authenticated owner boundary | Planned; no DynamoDB adapter exists today |
+| **Private production** | DynamoDB behind the authenticated owner boundary; separate from demo | Durable after manual table/IAM configuration; missing configuration fails closed |
 
 `server/runtime-mode.ts` defaults to local mode outside Vercel. `HUMAN_PROFILE_MODE=public-demo` enables demo mode explicitly; `VERCEL=1` always selects demo mode, even if a local override was configured. No secrets or client-side environment variables are required for the public demo; private sign-in requires the Clerk configuration above. `HUMAN_PROFILE_DATA_DIR` applies only to local storage and is ignored by public demo selection.
 
@@ -232,13 +234,13 @@ Pattern Engine
 Human Profile
 ```
 
-**DynamoDB and Kafka are not implemented.** The preferred future direction is document/key-value persistence, not a relational-first backend. A possible DynamoDB key strategy is `PK = USER#<userId>` with `SK = PROFILE`, `COMMITMENT#<id>`, or `EVIDENCE#<id>`. Audit history starts embedded; a future adapter must address growth, pagination, transaction limits, and conditional updates. No AWS SDK or adapter skeleton was added.
+**Private DynamoDB persistence is implemented; Kafka is not.** The AWS SDK v3 adapter uses separate PROFILE, COMMITMENT and EVIDENCE records, conditional partition revisions and atomic transactions. See [DynamoDB setup, limits and migration considerations](docs/dynamodb-persistence-v1.md).
 
 Forms remain event producers through domain transitions and evidence. Wearables may eventually be additional producers. Introduce Kafka only when asynchronous/high-volume integration needs justify it.
 
 ## Roadmap — Future Work
 
-- Production DynamoDB adapter behind the implemented Clerk owner boundary, plus production operational controls.
+- Production operational controls, backups, retention, and deliberate migration of existing private files.
 - Commitment outcome/date revisions, reversal workflows, and production evidence audit/dispute operations. Evidence provenance, verification status, text corrections, disputes, and audit history are already implemented.
 - External verification and wearable integrations.
 - Kafka-based event ingestion when justified.
@@ -265,8 +267,10 @@ HUMAN_PROFILE_MODE=public-demo npm run dev
 npm run reset:data # archive local data; next access seeds fresh mock records
 ```
 
+`npm start` runs with `NODE_ENV=production`, so private storage requires DynamoDB even on localhost. `npm run dev` defaults to private files; `HUMAN_PROFILE_OWNER_STORAGE=dynamodb` opts development into DynamoDB. Public demo selection stays independent.
+
 Stop the dev server before building; both use `.next/`. Keep credentials, `.env` files, dependency folders, and generated output out of Git.
 
 ## Project Status
 
-**Public interactive prototype / experimental product.** The live demo, commitment pipeline, and durable local and temporary public repository modes are implemented, along with Clerk authentication and private owner isolation. Durable production persistence, external verification, and multi-user authorization remain future work.
+**Public interactive prototype / experimental product.** The live demo, commitment pipeline, and durable local and temporary public repository modes are implemented, along with Clerk authentication and private owner isolation. The private DynamoDB adapter is implemented, with manual AWS setup required. External verification and multi-user sharing authorization remain future work.

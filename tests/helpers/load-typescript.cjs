@@ -17,7 +17,7 @@ function loadTypeScript(relativePath) {
   vm.runInNewContext(code, {
     exports: module.exports, module, Date, structuredClone, setTimeout, URL, Request, Response,
     require: id => {
-      if (id.startsWith('node:')) return require(id);
+      if (id.startsWith('node:') || ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb'].includes(id)) return require(id);
       const resolved = id.startsWith('@/') ? path.join(root, id.slice(2)) : path.resolve(path.dirname(filename), id);
       return loadTypeScript(resolved.endsWith('.ts') ? resolved : resolved + '.ts');
     },

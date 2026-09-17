@@ -1,3 +1,5 @@
+> Current private production persistence is documented in [DynamoDB Persistence v1](dynamodb-persistence-v1.md). Local development and the anonymous demo retain the adapters described below.
+
 # Backend v1: local durable documents
 
 This document describes the original development/demo backend. [Authentication & Profile Ownership v1](authentication-v1.md) adds the separate Clerk-protected `/me` and `/api/me/profile-state` path, empty owner initialization, and distinct owner storage without changing the demo repository.
@@ -36,9 +38,9 @@ Reliability is recalculated on the server using the current six-calendar-month w
 
 The app binds to loopback. Host/Origin validation rejects foreign origins, but this is not authentication: any local client can act as the shared development user. Audience views remain UI previews, not server authorization. Use mock/dev data only; no credentials or AWS configuration are needed.
 
-The future DynamoDB adapter can use `PK = USER#<userId>` and `SK = PROFILE`, `COMMITMENT#<id>`, `EVIDENCE#<id>`. It must preserve atomic outcome/evidence writes, user isolation, and append-oriented audit semantics, using appropriate conditional writes and transactions. Embedded audit arrays may need separate records as they grow. DynamoDB is not implemented.
+The implemented [DynamoDB adapter](dynamodb-persistence-v1.md) uses `PK = USER#<userId>` and `SK = PROFILE`, `COMMITMENT#<id>`, `EVIDENCE#<id>`. It must preserve atomic outcome/evidence writes, user isolation, and append-oriented audit semantics, using appropriate conditional writes and transactions. Embedded audit arrays may need separate records as they grow. The adapter is implemented for private owners; manual AWS setup is required. This document otherwise describes the original local backend milestone.
 
-This is event-oriented persistence, not full event sourcing. Forms produce commands; domain transitions generate evidence and audit entries. Kafka, consumers, wearables, external verification APIs, and durable production persistence are not implemented. The public demo is deployed on Vercel; authentication now exists on the separate private owner path described above.
+This is event-oriented persistence, not full event sourcing. Forms produce commands; domain transitions generate evidence and audit entries. Kafka, consumers, wearables, and external verification APIs are not implemented. The public demo is deployed on Vercel; authentication now exists on the separate private owner path described above.
 
 ## Validation
 

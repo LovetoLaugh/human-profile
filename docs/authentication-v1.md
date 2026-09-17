@@ -23,7 +23,7 @@ Google → Clerk session → server/clerk-identity.ts
                               ↓
                 RepositoryStore interfaces
                               ↓
-          local files / temporary owner memory
+          local files / transactional DynamoDB
 ```
 
 `@clerk/nextjs` 7.9.4 supports the installed Next.js 15.5.25 and React 19.2.5. Next.js 15 uses `middleware.ts`, not `proxy.ts`. Middleware initializes Clerk only on account routes and the private API. Access is enforced again at the resource: `/me` redirects missing sessions to `/sign-in`, while both private API methods return JSON **401** without touching repositories. Missing keys disable sign-in, not the public demo. Invalid configuration or infrastructure errors fail closed; there is no development-user fallback for private requests.
@@ -40,16 +40,17 @@ Private profiles use `ProfileService` with empty initialization and the real clo
 
 | Runtime | Private adapter | Limitation |
 | --- | --- | --- |
-| Local default | Existing `FileStore`, under `.human-profile-data/owners/owner-<hash>.json` | Durable only on this development machine; filesystem access can read/edit it |
-| Vercel or explicit `public-demo` mode | Separate `TemporaryOwnerStore` instance over `MemoryStore` | Non-durable, per server instance; not a production database |
+| `npm run dev` default | Existing FileStore under `.human-profile-data/owners/owner-<hash>.json` | Durable on this machine only |
+| Development with `HUMAN_PROFILE_OWNER_STORAGE=dynamodb` | DynamoDB | Requires explicit AWS or local emulator setup |
+| Vercel or `NODE_ENV=production` | DynamoDB | Missing configuration returns a clear private storage error; no memory/file fallback |
 
-`HUMAN_PROFILE_DATA_DIR` changes the local base directory; private files stay in its `owners` subdirectory, away from the development demo file. Hosted owner storage never opens local files and never uses the demo repository or demo cookie. It expires inactive owners after 30 minutes, permits at most 50 resident owners per instance, and rejects new owners at capacity rather than evicting an active owner. Transactions in progress are not expired. Limits are 250 commitments, 500 evidence records and 1,500 audit entries per owner; exceeding a limit rolls back the transaction.
+`HUMAN_PROFILE_DATA_DIR` changes the local base directory. `HUMAN_PROFILE_MODE=public-demo` controls the anonymous demo only. Hosted private storage never uses the demo repository or demo cookie. The UI reports local or durable DynamoDB storage after a successful load. See [DynamoDB persistence, environment variables, IAM and manual setup](dynamodb-persistence-v1.md).
 
-Hosted private state can disappear after inactivity, restarts or routing to another instance. This is disclosed at sign-in and on `/me`. Use non-sensitive test information until durable production persistence is implemented. `npm run reset:data` archives the local base directory including private profiles; stop the server first. No automatic migration between Clerk development/production users or from demo identities exists.
+`npm run reset:data` archives local files only (stop the server first); it does not reset DynamoDB. No automatic migration between Clerk development/production subjects, private files, or demo identities exists.
 
 ## Manual Clerk / Google setup
 
-No credentials were available during implementation. The source contains no fabricated credentials. `.env.example` contains only names, blank values and route configuration.
+No credentials were available during the original authentication implementation. The source contains no fabricated credentials. `.env.example` contains only names, blank values and route configuration.
 
 1. Create a Clerk application. Under **SSO connections**, add Google for all users and enable sign-up/sign-in. For this v1 experience, make Google the sole enabled sign-in method; disable password/email-code and other social methods if the dashboard enabled them by default. Avoid adding required profile fields or onboarding tasks; the app uses Clerk's prebuilt sign-in-or-up UI.
 2. For local development, Clerk's development Google connection uses shared OAuth credentials. Copy the matching development publishable and secret keys from Clerk into an ignored `.env.local`:
@@ -64,24 +65,26 @@ No credentials were available during implementation. The source contains no fabr
 
    Start with `npm run dev`. Use the same origin throughout the flow (`http://localhost:3000`, as printed by the project). Never prefix the secret key with `NEXT_PUBLIC_`. Restart after changing keys. Keep both startup scripts bound to `localhost`: Next.js 15 normalizes numeric loopback middleware URLs to `localhost`, and Clerk’s same-page rewrite can otherwise be treated as an external proxy back to this server.
 3. Create/configure the Clerk production instance for the intended production domain and complete Clerk's domain/DNS setup. For Google production authentication, enable custom credentials. Create a Google Cloud OAuth web client, configure its consent screen and intended audience, add your app origin, and copy Clerk's **exact Authorized Redirect URI** into Google. Store the Google client ID/secret in Clerk, not in this app. Complete Google's publishing requirements before allowing general users. Use a regular browser to test Google OAuth.
-4. In Vercel → project → Settings → Environment Variables, add the matching production `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`, plus the route variables above, scoped to Production. Redeploy after setting them: public variables are build-time values. Configure Preview separately with appropriate development credentials and allowed origins; do not reuse an unrelated production instance. `VERCEL=1` still forces temporary hosted storage, even if a local mode override is present.
+4. In Vercel → project → Settings → Environment Variables, add the matching production `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`, plus the route variables above, scoped to Production. Redeploy after setting them: public variables are build-time values. Configure Preview separately with appropriate development credentials and allowed origins; do not reuse an unrelated production instance. `VERCEL=1` requires DynamoDB for private profiles and preserves temporary anonymous demo storage. Configure AWS separately as described in the persistence guide.
 5. In Clerk's redirect/path settings, use `/sign-in` for sign-in/sign-up entry and `/me` for application home/after-auth destinations. The account layout and SignIn component force successful sign-in and sign-up to `/me`, including users arriving directly at `/sign-in`. The UserButton provides account/sign-out controls and sign-out returns to `/`.
 
 Clerk production requires a domain you own; its production instance cannot use a `*.vercel.app` domain. Configure a custom domain and the required DNS records before enabling production authentication. The current Vercel URL can remain an anonymous recruiter demo. Clerk development keys can be used for non-production preview testing on Vercel-generated domains. See [Clerk’s Vercel deployment guide](https://clerk.com/docs/guides/development/deployment/vercel).
 
 References: [Clerk App Router integration](https://clerk.com/docs/nextjs/getting-started/quickstart), [Next.js 15 middleware naming and resource checks](https://clerk.com/docs/reference/nextjs/clerk-middleware), [prebuilt sign-in-or-up page](https://clerk.com/docs/nextjs/guides/development/custom-sign-in-or-up-page), [Google development/production configuration](https://clerk.com/docs/guides/configure/auth-strategies/social-connections/google).
 
-## Validation and remaining work
+## Authentication milestone validation and remaining work
+
+These checks below describe the original milestone. The owner subsequently verified Google sign-in, protected `/me`, private profile separation and sign-out locally. Current DynamoDB validation is recorded in [the persistence guide](dynamodb-persistence-v1.md); it does not certify live AWS deployment.
 
 The automated suite includes missing-session 401s, subject mapping, owner spoofing, cross-owner mutations, identical IDs in separate partitions, empty initialization, local reloads, temporary-store limits, demo separation, unchanged outcome/evidence rules, dependency boundaries and initial HTML rendering. All original 84 tests remain intact.
 
 Production-build checks cover anonymous `/`, meaningful raw HTML without JavaScript, public demo API/workflows, `/me` redirect and private API 401s. Without real Clerk keys, an actual Google OAuth round trip, configured Clerk session validation and sign-out/account switching against Clerk cannot be certified; run those checks after configuration. No test-only authentication bypass exists in production code.
 
-This milestone provides authenticated owner isolation, not a complete production authorization platform. Durable storage, account deletion/data retention policies, operational controls and server-enforced multi-user sharing remain future work. There are no external verification or wearable integrations. Private routes use noindex metadata, but privacy is enforced by the session checks, not by robots instructions. The next milestone is a DynamoDB adapter preserving the current owner partition and atomic outcome/evidence transaction contracts.
+This milestone provides authenticated owner isolation, not a complete production authorization platform. Account deletion/data retention policies, operational controls and server-enforced multi-user sharing remain future work. There are no external verification or wearable integrations. Private routes use noindex metadata, but privacy is enforced by the session checks, not by robots instructions. The DynamoDB adapter now preserves the current owner partition and atomic outcome/evidence transaction contracts.
 
 Dependency audit: the installed Next.js 15 dependency tree still reports two production findings involving its existing PostCSS dependency (one high, one moderate). Clerk introduced no production advisory in this check. A framework/dependency remediation should be reviewed separately; no unrelated major Next.js upgrade was included in this milestone.
 
-## Implementation inventory and verification
+## Original authentication milestone inventory and verification
 
 Created files:
 

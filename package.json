@@ -12,6 +12,8 @@
     "reset:data": "node scripts/reset-local-data.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1134.0",
+    "@aws-sdk/lib-dynamodb": "^3.1134.0",
     "@clerk/nextjs": "^7.9.4",
     "next": "^15.5.16",
     "react": "^19.2.5",

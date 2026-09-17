@@ -5,7 +5,7 @@ import type { ProfileState } from '@/application/repositories';
 import type { RuntimeMode } from '@/server/runtime-mode';
 import type { ProfileCommand, ProfileView } from '@/application/profile-service';
 
-type RuntimeView = ProfileView & { mode: RuntimeMode | 'owner-local' | 'owner-temporary' };
+type RuntimeView = ProfileView & { mode: RuntimeMode | 'owner-local' | 'owner-dynamodb' };
 interface CommitmentContextValue extends RuntimeView {
  dataNotice: string;
  saving: boolean;
@@ -59,7 +59,7 @@ export function CommitmentProvider({ children, experience = 'demo' }: { children
  return <>
   {error && <div className="profile-notice" role="alert">{error} <button className="profile-button" disabled={saving} onClick={() => void load()}>Reload saved data</button></div>}
   {saving && <div className="profile-notice" role="status">Saving…</div>}
-  <LoadingErrorContext.Provider value={error}><CommitmentContext.Provider value={view ? { ...view, saving, error, dataNotice: experience === 'owner' ? view.mode === 'owner-temporary' ? 'Temporary private profile · Changes may reset' : 'Private profile · Saved on this computer' : view.mode === 'public-demo' ? 'Simulated demo data · Changes may reset' : 'Saved on this computer',
+  <LoadingErrorContext.Provider value={error}><CommitmentContext.Provider value={view ? { ...view, saving, error, dataNotice: experience === 'owner' ? view.mode === 'owner-dynamodb' ? 'Private profile · Saved durably' : 'Private profile · Saved on this computer' : view.mode === 'public-demo' ? 'Simulated demo data · Changes may reset' : 'Saved on this computer',
    dispatch: action => action.type === 'refresh-clock' ? load().then(() => true) : save(action),
    saveProfile: profile => save({ type: 'profile', profile }),
   } : null}>{children}</CommitmentContext.Provider></LoadingErrorContext.Provider>

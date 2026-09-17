@@ -20,7 +20,7 @@ const create = (id, extra = {}) => ({ type: 'create', id, input: { title: 'My co
 function request(body, query = '', headers = {}) {
  return new Request(`https://profile.example/api/me/profile-state${query}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json', origin: 'https://profile.example', ...headers }, body: JSON.stringify(body) } : { headers });
 }
-function handler(app, subject) { return ownerHandler(async () => subject ? authenticatedIdentity(subject) : null, async () => app, true); }
+function handler(app, subject) { return ownerHandler(async () => subject ? authenticatedIdentity(subject) : null, async () => app, () => 'local'); }
 
 test('auth configuration is optional for the demo and requires both keys for private authentication', () => {
  assert.equal(authenticationConfigured({}), false);
@@ -45,7 +45,7 @@ test('anonymous public demo initializes without any authenticated identity', asy
 });
 test('private GET and POST return 401 before any repository operation when unauthenticated', async () => {
  let touched = false;
- const run = ownerHandler(async () => null, async () => { touched = true; throw new Error('must not run'); }, true);
+ const run = ownerHandler(async () => null, async () => { touched = true; throw new Error('must not run'); }, () => 'local');
  for (const req of [request(), request(create('x')), request(null, '?userId=user_A', { 'x-user-id': 'user_A', cookie: 'human-profile-demo=dev-user-001' })]) {
   const response = await run(req);
   assert.equal(response.status, 401);
@@ -58,7 +58,7 @@ test('new authenticated profiles start empty with all sharing disabled', async (
  const response = await run(request());
  assert.equal(response.status, 200);
  const view = await response.json();
- assert.equal(view.mode, 'owner-temporary');
+ assert.equal(view.mode, 'owner-local');
  assert.equal(view.profile.ownerId, privateOwnerKey({ subject: 'user_A' }));
  assert.equal(view.profile.about.name, '');
  assert.deepEqual(view.state.commitments, []);
@@ -140,9 +140,8 @@ test('private local persistence survives recreation and never reads the demo par
  assert.equal(files.length, 1); assert.match(files[0], /^owner-.*\.json$/);
  assert.equal(fs.existsSync(join(directory, 'dev-user-001.json')), false);
 });
-test('hosted private persistence is separate, temporary, bounded and uses no local files', async () => {
- const app = await createOwnerService({ VERCEL: '1', HUMAN_PROFILE_DATA_DIR: '/dev/null/never-write' });
- assert.equal((await app.read(privateOwnerKey({ subject: 'user_A' }))).state.evidence.length, 0);
+test('hosted private persistence requires configuration; legacy temporary adapter remains bounded', async () => {
+ await assert.rejects(createOwnerService({ VERCEL: '1', HUMAN_PROFILE_DATA_DIR: '/dev/null/never-write' }), /HUMAN_PROFILE_DYNAMODB_TABLE/);
  let clock = 0;
  const store = new TemporaryOwnerStore(() => clock, 100, 1);
  const service = ownerService(store);
