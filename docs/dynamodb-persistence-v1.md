@@ -1,3 +1,5 @@
+> Current checkpoint (2026-10-07): the user completed AWS setup and confirmed deployed persistence after logout/login. Earlier “unverified” statements below describe the original implementation session. [Purpose-Based Sharing v1](purpose-based-sharing-v1.md) now adds owner-partition SHARE items using the same table and IAM permissions. See [project status](project-status.md) for exact current validation boundaries.
+
 # DynamoDB Production Persistence v1
 
 The private `/me` application now has a durable DynamoDB adapter behind the existing repository contracts. No AWS resources are provisioned by this change. Anonymous demo repositories, Clerk authentication, domain transitions, and application workflows are unchanged. Live AWS persistence must be verified after manual deployment setup; automated tests inject a mocked DocumentClient and require no credentials.

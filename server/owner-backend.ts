@@ -4,14 +4,17 @@ import type { RuntimeEnvironment } from './runtime-mode';
 import { ownerStorageMode, dynamoConfiguration } from './owner-storage-configuration';
 export { ownerStorageMode } from './owner-storage-configuration';
 
-export async function createOwnerService(environment: RuntimeEnvironment) {
+export async function createOwnerStore(environment: RuntimeEnvironment) {
  if (ownerStorageMode(environment) === 'dynamodb') {
   const configuration = dynamoConfiguration(environment);
   const { createDynamoStore } = await import('../persistence/dynamodb-client');
-  return new ProfileService(createDynamoStore(configuration), undefined, 'empty');
+  return createDynamoStore(configuration);
  }
  const { FileStore } = await import('../persistence/file-store');
- return new ProfileService(new FileStore(join(environment.HUMAN_PROFILE_DATA_DIR || '.human-profile-data', 'owners')), undefined, 'empty');
+ return new FileStore(join(environment.HUMAN_PROFILE_DATA_DIR || '.human-profile-data', 'owners'));
+}
+export async function createOwnerService(environment: RuntimeEnvironment) {
+ return new ProfileService(await createOwnerStore(environment), undefined, 'empty');
 }
 let backend: Promise<ProfileService> | undefined;
 export function getOwnerService() {

@@ -1,3 +1,4 @@
+import { validShare, type Share } from '../domain/sharing/share';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { GetCommand, QueryCommand, TransactWriteCommand, type DynamoDBDocumentClient, type TransactWriteCommandInput } from '@aws-sdk/lib-dynamodb';
@@ -21,7 +22,7 @@ export function ownerPartition(ownerId: string) {
  if (!/^owner-[a-f0-9]{64}$/.test(ownerId)) throw new DynamoIntegrityError('Invalid private owner key.');
  return `USER#${ownerId}`;
 }
-export function entityKey(ownerId: string, kind: 'PROFILE' | 'COMMITMENT' | 'EVIDENCE', id?: string) {
+export function entityKey(ownerId: string, kind: 'PROFILE' | 'COMMITMENT' | 'EVIDENCE' | 'SHARE', id?: string) {
  if (kind !== 'PROFILE' && (!id || Buffer.byteLength(id, 'utf8') > 900)) throw new DynamoIntegrityError('Invalid record key.');
  return { PK: ownerPartition(ownerId), SK: kind === 'PROFILE' ? kind : `${kind}#${id}` };
 }
@@ -32,9 +33,10 @@ function validateItem(value: unknown, ownerId: string): DynamoItem {
  if (value.SK === 'PROFILE') {
   if (!integer(value.revision) || value.revision < 1 || !object(value.data.about) || !object(value.data.permissions)) throw new DynamoIntegrityError('Invalid stored profile.');
  } else {
-  const kind = value.SK.startsWith('COMMITMENT#') ? 'COMMITMENT' : value.SK.startsWith('EVIDENCE#') ? 'EVIDENCE' : null;
+  const kind = value.SK.startsWith('COMMITMENT#') ? 'COMMITMENT' : value.SK.startsWith('EVIDENCE#') ? 'EVIDENCE' : value.SK.startsWith('SHARE#') ? 'SHARE' : null;
   if (!kind || typeof value.data.id !== 'string' || entityKey(ownerId, kind, value.data.id).SK !== value.SK || !integer(value.orderRevision) || value.orderRevision < 1 || !integer(value.orderIndex)) throw new DynamoIntegrityError('Invalid stored record.');
   if (kind === 'COMMITMENT' && (!Array.isArray(value.data.evidenceIds) || typeof value.data.status !== 'string')) throw new DynamoIntegrityError('Invalid stored commitment.');
+  if (kind === 'SHARE' && !validShare(value.data)) throw new DynamoIntegrityError('Invalid stored share.');
   if (kind === 'EVIDENCE' && !Array.isArray(value.data.auditHistory)) throw new DynamoIntegrityError('Invalid stored evidence.');
  }
  return value as DynamoItem;
@@ -92,6 +94,8 @@ export class DynamoStore implements RepositoryStore {
   records.sort((a, b) => b.orderRevision! - a.orderRevision! || a.orderIndex! - b.orderIndex! || a.SK.localeCompare(b.SK));
   document.commitments = records.filter(item => item.SK.startsWith('COMMITMENT#')).map(item => clone(item.data) as unknown as Owned<Commitment>);
   document.evidence = records.filter(item => item.SK.startsWith('EVIDENCE#')).map(item => clone(item.data) as unknown as Owned<EvidenceEvent>);
+  const shares = records.filter(item => item.SK.startsWith('SHARE#'));
+  if (shares.length) document.shares = shares.map(item => clone(item.data) as unknown as Owned<Share>);
   return { document, items };
  }
  private writes(document: UserDocument, previous: DynamoItem[]) {
@@ -100,7 +104,7 @@ export class DynamoStore implements RepositoryStore {
   const old = new Map(previous.map(item => [item.SK, item]));
   const profile: DynamoItem = clean({ ...entityKey(document.ownerId, 'PROFILE'), schemaVersion: 1, revision, data: document.profile as unknown as Record<string, unknown> });
   const changes: DynamoItem[] = [profile];
-  for (const [kind, records] of [['COMMITMENT', document.commitments], ['EVIDENCE', document.evidence]] as const) {
+  for (const [kind, records] of [['COMMITMENT', document.commitments], ['EVIDENCE', document.evidence], ['SHARE', document.shares ?? []]] as const) {
    records.forEach((record, index) => {
     const key = entityKey(document.ownerId, kind, record.id);
     const existing = old.get(key.SK);

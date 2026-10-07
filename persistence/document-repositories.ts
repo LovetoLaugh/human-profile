@@ -18,5 +18,7 @@ export function repositoriesFor(document: UserDocument): Repositories {
   async get(ownerId) { check(ownerId); return document.profile ? clone(document.profile) : undefined; },
   async save(record) { check(record.ownerId); document.profile = clone(record); },
  };
- return { commitments: records(document.commitments), evidence: records(document.evidence), profile };
+ const shares = document.shares ?? [];
+ const shareRecords = records(shares);
+ return { shares: { ...shareRecords, async save(record) { await shareRecords.save(record); document.shares = shares; } }, commitments: records(document.commitments), evidence: records(document.evidence), profile };
 }

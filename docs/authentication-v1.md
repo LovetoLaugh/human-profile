@@ -1,3 +1,5 @@
+> Current checkpoint (2026-10-07): private recipient-bound sharing now adds protected `/shared/...` and `/api/shared/...` routes, with server-verified email acceptance bound to the verified subject. Sign-in may return to a strictly validated local invitation path. Original milestone statements below about previews-only/no shared endpoint are historical. AWS setup and deployed persistence after logout/login are user-confirmed. See [sharing documentation](purpose-based-sharing-v1.md) and [project status](project-status.md).
+
 # Authentication & Profile Ownership v1
 
 Human Profile has separate public and private experiences. Google authentication through Clerk establishes ownership; it does not turn the fictional demo into a real person's profile.

@@ -1,4 +1,6 @@
 'use client';
+import { OwnerShares } from '../sharing/OwnerShares';
+import { PermissionMatrix } from '../profile/PermissionMatrix';
 import { useState } from 'react';
 import { useCommitments } from '../commitments/CommitmentProvider';
 import { NewCommitmentForm } from '../commitments/NewCommitmentForm';
@@ -21,7 +23,7 @@ export function OwnerProfile() {
   <section className="card profile-header"><span className="eyebrow">PRIVATE OWNER PROFILE</span>
    <h1>{profile.about.name || 'Your Human Profile'}</h1><p>{profile.about.description || 'Your context, commitments, and evidence start here.'}</p>
    <p>{mode === 'owner-dynamodb' ? 'Durable private storage: your saved profile, commitments, and evidence persist across visits and server restarts.' : 'Development storage: your private profile is saved on this server’s local filesystem. This is not a production database.'} Avoid sensitive information in this milestone.</p>
-   <p>This profile is separate from Alex Morgan’s public demo. No information is shared with other users. Verification actions remain simulations; no health or wearable integrations are connected.</p>
+   <p>This profile is separate from Alex Morgan’s public demo. Only evidence you explicitly share with an intended recipient can be accessed by that recipient. Verification actions remain simulations; no health or wearable integrations are connected.</p>
   </section>
   <section><ProfileAbout profile={profile.about} showAbout showInterests editable onEdit={() => setEditing(true)}/></section>
   <section className="card profile-header"><h2>Reliability</h2>
@@ -33,6 +35,8 @@ export function OwnerProfile() {
     {state.commitments.slice(0, limit).map(commitment => <CommitmentListItem key={commitment.id} commitment={commitment} onAction={(type, id) => { if (!saving) void dispatch({ type, id, at: new Date().toISOString() }); }} onEvidence={() => setSelectedEvidence(commitment.evidenceIds[0] ?? null)}/>)}</div>
    {state.commitments.length > limit && <button className="profile-button load-more" onClick={() => setLimit(limit + 12)}>Show more commitments</button>}
   </section>
+  <PermissionMatrix privateOwner permissions={profile.permissions} onToggle={async (section, audience) => { if (!saving) await saveProfile({ ...profile, permissions: { ...profile.permissions, [section]: { ...profile.permissions[section], [audience]: !profile.permissions[section][audience] } } }); }}/>
+  <OwnerShares/>
   <EvidenceBrowser records={state.evidence} onSelect={event => setSelectedEvidence(event.id)}/>
   {editing && <ProfileModal title="Edit your profile" onClose={() => setEditing(false)}><AboutEditor initial={profile.about} onCancel={() => setEditing(false)} onSave={async about => { if (await saveProfile({ ...profile, about })) setEditing(false); }}/></ProfileModal>}
   {creating && <NewCommitmentForm onClose={() => setCreating(false)} onSave={async (input, id, at) => { if (!await dispatch({ type: 'create', input, id, at })) return false; setCreating(false); return true; }}/ >}

@@ -25,6 +25,14 @@ Clerk verifies the session at the server boundary and maps its stable user ID to
 
 Private storage uses local files during development and DynamoDB in production. Production requires manual AWS configuration and fails clearly without it; there is no temporary private fallback. See [DynamoDB setup and limitations](docs/dynamodb-persistence-v1.md). Demo data is never promoted into a private account. See [authentication setup, security boundaries, and exact Clerk/Google/Vercel steps](docs/authentication-v1.md), and copy the blank variable names from [.env.example](.env.example) into an ignored local environment file.
 
+## Purpose-Based Sharing v1
+
+Private owners at `/me` can create a purpose-labelled invitation for a verified recipient, with a fixed evidence selection and expiry. Preview and recipient views use the same server-filtered fields. Recipients sign in and accept; the grant then binds to their authenticated subject. Owners can list and revoke shares. Existing audience/category permissions remain an upper bound, and new evidence never joins automatically. Audit notes, unrelated profile fields and pattern summaries are excluded.
+
+The anonymous demo’s Share Profile and View As controls remain simulations. Real recipient authorization exists only on the private invitation path. Revocation prevents future access but cannot erase copies already made. See [sharing behavior, storage and deployment checks](docs/purpose-based-sharing-v1.md) and the [current project checkpoint](docs/project-status.md).
+
+AWS setup is complete and deployed private persistence after logout/login is **user-confirmed**. This statement does not imply live sharing verification.
+
 ## Architecture at a Glance
 
 ```mermaid
@@ -58,7 +66,7 @@ Professional history, financial history, social content, and health information 
 
 Current state describes temporary context, such as today’s self-reported well-being. Long-term patterns summarize observations over time. A temporary state or isolated outcome must not become a permanent conclusion about someone being good/bad, honest/dishonest, or trustworthy/untrustworthy.
 
-Purpose-based visibility currently filters UI previews; it is not server-enforced audience authorization.
+The demo’s purpose-based visibility filters UI previews. Private sharing additionally enforces recipient identity, fixed evidence selection and current permissions on the server.
 
 ## Currently Implemented
 
@@ -73,7 +81,7 @@ Commitment outcomes update Home and My Profile through a shared server-confirmed
 
 ### Mocked or unavailable today
 
-Most well-being signals, health information, work history, family information, references, and external verification are prototype data. Wearable data is not connected to a real integration. These screens and sample confirmations do not represent real integrations. The private DynamoDB adapter is implemented; AWS table/IAM provisioning remains a manual deployment step.
+Most well-being signals, health information, work history, family information, references, and external verification are prototype data. Wearable data is not connected to a real integration. These screens and sample confirmations do not represent real integrations. The private DynamoDB adapter is implemented; the owner has confirmed AWS setup and deployed persistence after logout/login.
 
 ## Commitments + Evidence Pipeline
 
@@ -134,7 +142,7 @@ Corrections currently cover evidence title/description; commitment outcome/date 
 | `components/commitments/CommitmentProvider.tsx` | Loads server snapshots; publishes only confirmed saves; loading/error/reload controls |
 | `app/api/profile-state/`, `server/` | Node route handlers, validation, runtime mode, development identity, and anonymous demo sessions |
 | `application/` | Repository contracts and workflow orchestration |
-| `persistence/` | Atomic local file adapter, transactional private DynamoDB adapter, bounded public demo repository, and memory test adapter |
+| `persistence/` | Atomic local file adapter, transactional private DynamoDB adapter (including share grants), bounded public demo repository, and memory test adapter |
 | `data/`, `data/mocks/` | Mock profile records and deterministic commitment fixtures |
 | `tests/` | Domain, profile-data, backend, and public-demo tests |
 
@@ -152,11 +160,11 @@ See [pipeline design and assumptions](docs/commitment-pipeline.md). The earlier 
 
 ## Testing
 
-**120 tests pass** in the current validation run. Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
+**142 tests pass** in the current validation run (including 22 sharing tests). Coverage includes completed/late/missed outcomes, active/cancelled exclusions, zero eligible observations, confidence boundaries, deadline equality/timezones, validation, immutable transitions, duplicate actions, evidence traceability, calendar windows, and permission isolation. Evidence v2 tests cover creation, source attribution, verification, disputes/restoration, corrections, revocation, ordered audit snapshots, immutable provider updates, and pattern exclusions.
 
 Backend tests additionally cover repository round trips, user isolation, reloads, seed/reset behavior, concurrent writes, atomic failure handling, authoritative request parsing, and persisted Evidence v2 eligibility. They use isolated temporary directories, never your runtime file. Public-demo tests cover environment selection, deterministic initialization, visitor isolation, temporary-state lifecycle and limits, cookie identity, and request boundaries.
 
-DynamoDB tests use an injected mock client, without credentials: pagination, serialization, atomic failures, revision conflicts, ambiguous responses, owner isolation, size limits, and configuration selection are covered. Live AWS persistence has not been verified.
+DynamoDB tests use an injected mock client, without credentials: pagination, serialization, atomic failures, revision conflicts, ambiguous responses, owner isolation, size limits, and configuration selection are covered. Live AWS persistence was subsequently confirmed by the project owner; these tests remain mocked.
 
 Authentication tests cover anonymous access, server-derived ownership, missing sessions, owner spoofing, cross-user isolation, empty initialization, private storage, framework boundaries, and the initial Home HTML.
 
@@ -249,7 +257,7 @@ Forms remain event producers through domain transitions and evidence. Wearables 
 
 ## Privacy / Responsible Design
 
-The design prioritizes user control, purpose-specific sharing, evidence provenance, explainable patterns, and avoiding opaque character scoring. This public interactive prototype uses fictional data. The API returns the current local user’s or demo visitor’s full snapshot; UI audience previews are not a security boundary. Sample fixtures also remain in the client bundle for illustrative sections. The demo remains unauthenticated. Private `/me` requires Clerk authentication and exposes only the authenticated owner’s records. Real sharing and connected health/financial data are not implemented.
+The design prioritizes user control, purpose-specific sharing, evidence provenance, explainable patterns, and avoiding opaque character scoring. This public interactive prototype uses fictional data. The API returns the current local user’s or demo visitor’s full snapshot; UI audience previews are not a security boundary. Sample fixtures also remain in the client bundle for illustrative sections. The demo remains unauthenticated. Private `/me` requires Clerk authentication and exposes only the authenticated owner’s records. Private evidence invitations are implemented with server authorization; connected health/financial data is not implemented.
 
 ## Local Development
 
@@ -273,4 +281,4 @@ Stop the dev server before building; both use `.next/`. Keep credentials, `.env`
 
 ## Project Status
 
-**Public interactive prototype / experimental product.** The live demo, commitment pipeline, and durable local and temporary public repository modes are implemented, along with Clerk authentication and private owner isolation. The private DynamoDB adapter is implemented, with manual AWS setup required. External verification and multi-user sharing authorization remain future work.
+**Public interactive prototype / experimental product.** The live demo, commitment pipeline, and durable local and temporary public repository modes are implemented, along with Clerk authentication and private owner isolation. Private DynamoDB persistence is user-confirmed in deployment. Recipient-bound sharing v1 is implemented; live sharing verification after deployment remains pending. External verification and broader multi-user collaboration remain future work.

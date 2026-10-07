@@ -8,4 +8,4 @@ export default function middleware(request: NextRequest, event: NextFetchEvent) 
  if (!authenticationConfigured(process.env)) return NextResponse.next();
  return clerk(request, event);
 }
-export const config = { matcher: ['/me/:path*', '/sign-in/:path*', '/api/me/:path*'] };
+export const config = { matcher: ['/me/:path*', '/sign-in/:path*', '/api/me/:path*', '/shared/:path*', '/api/shared/:path*'] };

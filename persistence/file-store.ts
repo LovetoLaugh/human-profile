@@ -1,3 +1,4 @@
+import { validShare } from '../domain/sharing/share';
 import { mkdir, open, readFile, rename, unlink, rmdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -30,6 +31,7 @@ export class FileStore implements RepositoryStore {
     if (document.version !== 1 || document.ownerId !== ownerId || !Number.isInteger(document.revision)
      || !Array.isArray(document.commitments) || !Array.isArray(document.evidence)
      || [...document.commitments, ...document.evidence].some(r => r.ownerId !== ownerId || typeof r.id !== 'string')
+     || (document.shares !== undefined && (!Array.isArray(document.shares) || document.shares.some(s => s.ownerId !== ownerId || !validShare(s))))
      || (document.profile && document.profile.ownerId !== ownerId)) throw new Error('Invalid document');
    } catch (error) {
     if (code(error) === 'ENOENT') document = emptyDocument(ownerId);

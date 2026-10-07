@@ -64,3 +64,12 @@
 .owner-profile .profile-header h1{margin-top:10px}
 .owner-profile .profile-header p{margin-top:12px;line-height:1.8}
 @media(max-width:700px){.account-shell,.owner-profile{padding:20px 18px}}
+
+/* Purpose-based sharing uses the existing card and button styles. */
+.sharing-panel { display: grid; gap: 16px; }
+.sharing-form fieldset { border: 1px solid var(--border, #dce1df); border-radius: 12px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.sharing-form label, .sharing-link { display: grid; gap: 6px; }
+.sharing-form input:not([type="checkbox"]), .sharing-form select, .sharing-link input { width: 100%; min-width: 0; padding: 10px; border: 1px solid #cbd5d1; border-radius: 8px; font: inherit; background: white; color: #172c26; }
+.sharing-form .sharing-choice { display: flex; align-items: flex-start; gap: 10px; }
+.sharing-choice input { margin-top: 4px; }
+.sharing-evidence { border-top: 1px solid #dce1df; padding-top: 14px; margin-top: 14px; overflow-wrap: anywhere; }

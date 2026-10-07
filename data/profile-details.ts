@@ -72,14 +72,7 @@ export const timelineEvents: ProfileTimelineEvent[] = [
  { id: 't9', group: 'Last month', title: `Participated in ${augustCommunity.length} community activities`, evidenceIds: augustCommunity.map(e => e.id) },
 ];
 export const patternSections: Record<string, ProfileSection> = { reliability: 'reliability', relationships: 'family', community: 'community', growth: 'growth', financial: 'financial' };
-export function canSeeEvidence(e: EvidenceEvent, audience: AudienceType | 'me', permissions: PermissionSettings) {
- if (audience === 'me') return true;
- if (!permissions.evidence[audience] || !e.visibility.includes(audience)) return false;
- const categorySection: Record<string, ProfileSection> = { Work: 'work', 'Well-being': 'wellbeing', Family: 'family', Relationships: 'family', Community: 'community', Learning: 'growth', 'Current State': 'current-state', Financial: 'financial' };
- const section = categorySection[e.category];
- // Agreement receipts are individually selected evidence, independent of a financial assessment.
- return !section || permissions[section][audience];
-}
+export { canSeeEvidence } from '../domain/evidence/visibility';
 
 export const profileMetadata = { completeness: 78, lastUpdated: '5 min ago' };
 export const profileContext = {

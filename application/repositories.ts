@@ -1,3 +1,4 @@
+import type { Share } from '../domain/sharing/share';
 import type { Commitment } from '../domain/commitments/types';
 import type { EvidenceEvent, AboutProfile, PermissionSettings } from '../types/profile';
 
@@ -16,6 +17,7 @@ export interface ProfileRepository {
  save(profile: Owned<ProfileState>): Promise<void>;
 }
 export interface Repositories {
+ shares: RecordRepository<Share>;
  commitments: CommitmentRepository;
  evidence: EvidenceRepository;
  profile: ProfileRepository;
@@ -26,6 +28,7 @@ export interface UserDocument {
  revision: number;
  commitments: Owned<Commitment>[];
  evidence: Owned<EvidenceEvent>[];
+ shares?: Owned<Share>[]; // Absent in older local documents.
  profile?: Owned<ProfileState>;
 }
 /** A transaction must publish all writes together or none. Callbacks cannot escape their user partition. */
