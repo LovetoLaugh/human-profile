@@ -215,3 +215,41 @@ test('local concurrent acceptance and revocation serialize safely', async () => 
   assert.equal((await f.sharing.recipient(A,id,{subject:bound.recipientSubject,verifiedEmails:[]})).status,'revoked');
  }finally{await fs.rm(dir,{recursive:true,force:true});}
 });
+
+test('recipient responses contain no evidence when expiry occurs during acceptance publication or read completion', async () => {
+ // A slow DynamoDB acceptance can finish after the timestamp checked inside the callback.
+ const client = new FakeDynamoClient();
+ const f = await fixture(new DynamoStore(client, 'profiles-test'));
+ const { id } = await f.sharing.create(A, draft());
+ client.beforeTransact = async () => f.setTime(expiry);
+ assert.deepEqual(plain(await f.sharing.recipient(A, id, recipient, true)), { status: 'expired' });
+ client.beforeTransact = undefined;
+ assert.equal((await f.sharing.recipient(A, id, recipient)).status, 'expired');
+ // Also recheck a read-only result after its transaction completes.
+ const g = await fixture();
+ const created = await g.sharing.create(A, draft());
+ await g.sharing.recipient(A, created.id, recipient, true);
+ let time = now;
+ const delayed = new SharingService({ async transaction(owner, work) {
+  const result = await g.store.transaction(owner, work); time = expiry; return result;
+ } }, randomUUID, () => time);
+ assert.deepEqual(plain(await delayed.recipient(A, created.id, recipient)), { status: 'expired' });
+});
+
+test('recipient component state is isolated per invitation as well as per authenticated account', () => {
+ const ts = require('typescript'), vm = require('node:vm');
+ const source = require('node:fs').readFileSync('components/sharing/RecipientShare.tsx', 'utf8');
+ const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+ const module = { exports: {} }; let userId = 'recipient-one';
+ vm.runInNewContext(code, { module, exports: module.exports, require: id => {
+  if (id === '@clerk/nextjs') return { useAuth: () => ({ isLoaded: true, isSignedIn: true, userId }), UserButton: () => null };
+  if (id === 'next/link') return { default: () => null, __esModule: true };
+  if (id === './SharedEvidenceView') return { SharedEvidenceView: () => null };
+  return require(id);
+ } });
+ const key = (ownerId, shareId) => module.exports.RecipientSession({ ownerId, shareId }).props.children[1].key;
+ const first = key(A, 'first');
+ assert.notEqual(first, key(A, 'second'), 'Changing invitations must destroy the previous evidence state before render');
+ assert.notEqual(first, key(B, 'first'));
+ userId = 'recipient-two'; assert.notEqual(first, key(A, 'first'));
+});

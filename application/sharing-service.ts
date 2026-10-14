@@ -49,8 +49,8 @@ export class SharingService {
   });
  }
  /** URL identifiers locate a grant only; authenticated recipient matching is mandatory. */
- recipient(ownerId: string, id: string, identity: RecipientIdentity, accept = false): Promise<RecipientResult> {
-  return this.store.transaction(ownerId, async r => {
+ async recipient(ownerId: string, id: string, identity: RecipientIdentity, accept = false): Promise<RecipientResult> {
+  const result = await this.store.transaction<RecipientResult>(ownerId, async r => {
    let share = await r.shares.getById(ownerId, id);
    if (!identity.subject || !share || !validShare(share) || !matchesRecipient(share, identity)) throw new ShareUnavailableError();
    const profile = await r.profile.get(ownerId);
@@ -65,5 +65,9 @@ export class SharingService {
    }
    return { status: 'active', view: projectShare(share, records, profile.permissions) };
   });
+  // Publication/retries may outlast the expiry checked inside the transaction.
+  // Binding may already be durable, but expired evidence must not leave this service.
+  if (result.status === 'active' && Date.parse(result.view.expiresAt) <= Date.parse(this.now())) return { status: 'expired' };
+  return result;
  }
 }

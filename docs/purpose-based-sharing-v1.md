@@ -101,3 +101,10 @@ Modified:
 - `persistence/file-store.ts`
 - `server/clerk-identity.ts`
 - `server/owner-backend.ts`
+
+
+## Review follow-up — 2026-10-14
+
+The sharing implementation commit `d65baaa` is already on GitHub `master` and has a successful Vercel Production deployment recorded on October 7; the original not-deployed statements above describe the implementation session. Live recipient verification remains pending.
+
+The review fixes recipient view state isolation across invitation navigation and suppresses active evidence if expiry is reached while a transaction is completing or before a browser response is rendered. The reviewed suite passes **144 tests**, lint, TypeScript and production build. No schema, IAM, environment-variable or dependency changes are needed. See [the deployment/verification checkpoint](project-status.md) for approval status, exact delivery details and the live-check ledger. Do not roll back to pre-SHARE readers after creating grants.

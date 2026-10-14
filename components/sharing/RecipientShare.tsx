@@ -10,7 +10,7 @@ export function RecipientSession({ ownerId, shareId }: { ownerId: string; shareI
  const path = `/shared/${ownerId}/${shareId}`;
  if (!isLoaded) return <p role="status">Checking your session…</p>;
  if (!isSignedIn) return <section className="card profile-header"><h2>Sign-in required</h2><p>Only the intended recipient can accept this invitation. A link alone does not grant access.</p><Link className="profile-button" prefetch={false} href={`/sign-in?next=${encodeURIComponent(path)}`}>Sign in to view invitation</Link></section>;
- return <><div className="owner-toolbar"><Link href="/me">My private profile</Link><UserButton /></div><RecipientShare key={userId} ownerId={ownerId} shareId={shareId}/></>;
+ return <><div className="owner-toolbar"><Link href="/me">My private profile</Link><UserButton /></div><RecipientShare key={`${userId}:${ownerId}:${shareId}`} ownerId={ownerId} shareId={shareId}/></>;
 }
 export function RecipientShare({ ownerId, shareId }: { ownerId: string; shareId: string }) {
  const [result, setResult] = useState<RecipientResult | null>(null);
@@ -25,7 +25,7 @@ export function RecipientShare({ ownerId, shareId }: { ownerId: string; shareId:
    const response = await fetch(`/api/shared/${ownerId}/${shareId}`, { cache: 'no-store', method: accept ? 'POST' : 'GET', ...(accept ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'accept' }) } : {}) });
    const data = await response.json();
    if (!response.ok) throw new Error(data.error || 'This invitation is unavailable.');
-   if (requestNumber === sequence.current) setResult(data);
+   if (requestNumber === sequence.current) setResult(data.status === 'active' && Date.parse(data.view.expiresAt) <= Date.now() ? { status: 'expired' } : data);
   } catch (e) { if (requestNumber === sequence.current) setError(e instanceof Error ? e.message : 'This invitation could not be loaded.'); }
   finally { if (requestNumber === sequence.current) setBusy(false); }
  }, [ownerId, shareId]);
